@@ -1,0 +1,11 @@
+{
+  "name": "Now Roaming",
+  "tagline": "It's good to be lost.",
+  "description": "Now Roaming is a travel blog about long-term travel, first days in new cities, food, reflection, money, packing, and the quiet work of becoming clear.",
+  "url": "https://nowroaming.com",
+  "locale": "en_US",
+  "author": {
+    "name": "Joseph Huckabee"
+  },
+  "image": "/images/now-roaming-hero.png"
+}

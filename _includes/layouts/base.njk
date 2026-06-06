@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% set pageTitle %}{% if seoTitle %}{{ seoTitle }}{% elif title == 'Now Roaming' %}Now Roaming | You Are Now Roaming{% else %}{{ title }} | Now Roaming{% endif %}{% endset %}
+  {% set metaDescription = seoDescription or description or excerpt or site.description %}
+  {% set canonicalUrl = canonical or (page.url | absoluteUrl(site.url)) %}
+  {% set socialImage = (image or site.image) | absoluteUrl(site.url) %}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{{ metaDescription }}">
+  <meta name="author" content="{{ site.author.name }}">
+  {% if keywords %}
+    <meta name="keywords" content="{% if keywords.length and keywords is not string %}{{ keywords | join(', ') }}{% else %}{{ keywords }}{% endif %}">
+  {% endif %}
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="{{ canonicalUrl }}">
+  <meta property="og:site_name" content="{{ site.name }}">
+  <meta property="og:title" content="{{ pageTitle | trim }}">
+  <meta property="og:description" content="{{ metaDescription }}">
+  <meta property="og:type" content="{{ ogType or 'website' }}">
+  <meta property="og:url" content="{{ canonicalUrl }}">
+  <meta property="og:image" content="{{ socialImage }}">
+  <meta property="og:locale" content="{{ site.locale }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ pageTitle | trim }}">
+  <meta name="twitter:description" content="{{ metaDescription }}">
+  <meta name="twitter:image" content="{{ socialImage }}">
+  <title>{{ pageTitle | trim }}</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script type="application/ld+json">
+    {{ {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": site.name,
+      "description": site.description,
+      "url": site.url,
+      "publisher": {
+        "@type": "Person",
+        "name": site.author.name
+      }
+    } | json | safe }}
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header">
+    <nav class="nav" aria-label="Primary navigation">
+      <a class="brand" href="/#top" aria-label="Now Roaming home">
+        <span class="brand-mark">NR</span>
+        <span>Now Roaming</span>
+      </a>
+      <button class="menu-button" type="button" aria-label="Open navigation" aria-controls="nav-links" aria-expanded="false">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </button>
+      <div class="nav-links" id="nav-links">
+        <a href="/#journal">Journal</a>
+        <a href="/#routes">Routes</a>
+        <a href="/#notes">Field Notes</a>
+        <a href="/#subscribe">Subscribe</a>
+      </div>
+    </nav>
+  </header>
+
+  {{ content | safe }}
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <strong>Now Roaming</strong>
+      <span>you are now roaming</span>
+      <span>Travel / Experience / Enlightenment</span>
+    </div>
+  </footer>
+
+  <script src="/js/script.js" defer></script>
+</body>
+</html>

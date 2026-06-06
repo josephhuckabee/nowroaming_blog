@@ -1,0 +1,36 @@
+<h1>Sanity Compatibility</h1>
+<p>The Eleventy markdown posts use fields that map directly to <code>sanity/schemas/post.js</code>.</p>
+<p>Markdown front matter:</p>
+<pre><code class="language-yaml">layout: layouts/post.njk
+title: &quot;Stop 1: Beijing&quot;
+date: 2026-04-22
+location: &quot;Stop 1: Beijing&quot;
+category: Arrivals
+readTime: 7 min read
+excerpt: Short homepage preview.
+dek: &quot;6,800 miles from home&quot;
+seoTitle: &quot;Stop 1: Beijing | Now Roaming&quot;
+seoDescription: &quot;A first-day travel journal from Beijing about arrival, reset, and long-term roaming.&quot;
+keywords:
+  - Beijing travel journal
+  - long-term travel
+  - arrivals
+tags: posts
+</code></pre>
+<p>Sanity fields:</p>
+<ul>
+<li><code>title</code></li>
+<li><code>slug</code></li>
+<li><code>date</code></li>
+<li><code>location</code></li>
+<li><code>category</code></li>
+<li><code>readTime</code></li>
+<li><code>excerpt</code></li>
+<li><code>dek</code></li>
+<li><code>seoTitle</code></li>
+<li><code>seoDescription</code></li>
+<li><code>keywords</code></li>
+<li><code>image</code></li>
+<li><code>body</code></li>
+</ul>
+<p>If you add Sanity Studio later, keep these names to avoid migration pain.</p>

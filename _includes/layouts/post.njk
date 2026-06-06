@@ -1,0 +1,66 @@
+---
+layout: layouts/base.njk
+ogType: article
+---
+
+<main class="post-page" id="main-content">
+  <article class="post-article">
+    <header class="post-hero">
+      <p class="eyebrow">{{ location }}</p>
+      <h1>{{ title }}</h1>
+      {% if category %}
+        <div class="category-tags" aria-label="Post categories">
+          {% if category.length and category is not string %}
+            {% for item in category %}
+              <span>{{ item }}</span>
+            {% endfor %}
+          {% else %}
+            <span>{{ category }}</span>
+          {% endif %}
+        </div>
+      {% endif %}
+      <div class="post-meta">
+        <span>{{ date | readableDate }}</span>
+        {% if readTime %}
+          <span>{{ readTime }}</span>
+        {% endif %}
+      </div>
+      <p>{{ excerpt }}</p>
+    </header>
+
+    {% if dek %}
+      <p class="post-dek">{{ dek }}</p>
+    {% endif %}
+
+    <div class="post-body">
+      {{ content | safe }}
+    </div>
+  </article>
+</main>
+
+<script type="application/ld+json">
+  {{ {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": title,
+    "description": seoDescription or excerpt,
+    "datePublished": date | isoDate,
+    "dateModified": page.date | isoDate,
+    "author": {
+      "@type": "Person",
+      "name": site.author.name
+    },
+    "publisher": {
+      "@type": "Person",
+      "name": site.author.name
+    },
+    "mainEntityOfPage": page.url | absoluteUrl(site.url),
+    "image": (image or site.image) | absoluteUrl(site.url),
+    "articleSection": category,
+    "keywords": keywords or category,
+    "locationCreated": {
+      "@type": "Place",
+      "name": location
+    }
+  } | json | safe }}
+</script>

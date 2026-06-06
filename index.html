@@ -1,0 +1,178 @@
+---
+layout: layouts/base.njk
+title: Now Roaming
+description: Now Roaming is a dark tropical travel blog about movement, experience, and the path to enlightenment.
+---
+
+{% set posts = collections.posts %}
+{% set featured = posts[0] %}
+{% set secondaryPosts = posts.slice(1, 4) %}
+
+<section class="hero" id="top" aria-label="Now Roaming introduction">
+  <div class="hero-inner">
+    <p class="eyebrow">Travel Journal / Inner Compass</p>
+    <h1>Now Roaming</h1>
+    <p class="tagline">It's good to be lost.</p>
+    <p class="hero-copy">A record of movement, grit, wonder, and the quiet work of becoming clear. Follow the routes, rituals, meals, storms, strangers, and thresholds that shape a life in motion.</p>
+    <div class="hero-actions">
+      <a class="button" href="#journal">Read the Journal</a>
+      <a class="button secondary" href="#routes">Trace the Path</a>
+    </div>
+    <div class="hero-stats" aria-label="Travel highlights">
+      <div class="stat">
+        <strong>{{ posts.length }}</strong>
+        <span>Open routes</span>
+      </div>
+      <div class="stat">
+        <strong>42</strong>
+        <span>Field notes</span>
+      </div>
+      <div class="stat">
+        <strong>01</strong>
+        <span>Inner path</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<main id="main-content">
+  <section id="journal">
+    <div class="section-inner">
+      <div class="section-heading">
+        <h2>Latest from the road</h2>
+        <p>Dispatches from humid mornings, night markets, ferry decks, mountain temples, and the places where experience starts acting like a teacher.</p>
+      </div>
+
+      <div class="journal-grid">
+        <a class="feature-post" href="{{ featured.url }}">
+          <article>
+            <div class="post-meta">
+              <span>{{ featured.data.location }}</span>
+              <span>{{ featured.data.readTime }}</span>
+            </div>
+            {% if featured.data.category %}
+              <div class="category-tags" aria-label="Post categories">
+                {% if featured.data.category.length and featured.data.category is not string %}
+                  {% for item in featured.data.category %}
+                    <span>{{ item }}</span>
+                  {% endfor %}
+                {% else %}
+                  <span>{{ featured.data.category }}</span>
+                {% endif %}
+              </div>
+            {% endif %}
+            <h3>{{ featured.data.title }}</h3>
+            <p>{{ featured.data.excerpt }}</p>
+          </article>
+        </a>
+
+        <div class="post-list">
+          {% for post in secondaryPosts %}
+            <a class="post-card" href="{{ post.url }}">
+              <article>
+                <div class="post-meta">
+                  <span>{{ post.data.location }}</span>
+                </div>
+                {% if post.data.category %}
+                  <div class="category-tags" aria-label="Post categories">
+                    {% if post.data.category.length and post.data.category is not string %}
+                      {% for item in post.data.category %}
+                        <span>{{ item }}</span>
+                      {% endfor %}
+                    {% else %}
+                      <span>{{ post.data.category }}</span>
+                    {% endif %}
+                  </div>
+                {% endif %}
+                <h3>{{ post.data.title }}</h3>
+                <p>{{ post.data.excerpt }}</p>
+              </article>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="routes" id="routes">
+    <div class="section-inner">
+      <div class="section-heading">
+        <p class="eyebrow">Route Theory</p>
+        <h2>Routes as a photo feed</h2>
+        <p>Geo-tagged moments from the path: city arrivals, meals, money notes, field observations, and the images that anchor each stop.</p>
+      </div>
+
+      <div class="route-feed" aria-label="Geo-tagged route photo feed">
+        {% for route in routes %}
+          <article class="route-card">
+            {% if route.postUrl %}
+              <a class="route-image-link" href="{{ route.postUrl }}" aria-label="Read route post for {{ route.location }}">
+                <img src="{{ route.image }}" alt="{{ route.alt }}" loading="lazy">
+              </a>
+            {% else %}
+              <img src="{{ route.image }}" alt="{{ route.alt }}" loading="lazy">
+            {% endif %}
+            <div class="route-content">
+              <div class="route-topline">
+                <span>{{ route.location }}</span>
+                <time datetime="{{ route.date }}">{{ route.date }}</time>
+              </div>
+              <div class="route-geotag">
+                <span aria-hidden="true">+</span>
+                <span>{{ route.geotag }}</span>
+              </div>
+              <div class="category-tags" aria-label="Route category">
+                <span>{{ route.category }}</span>
+              </div>
+              <p>{{ route.caption }}</p>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section id="notes">
+    <div class="section-inner">
+      <div class="section-heading">
+        <h2>Field notes for the path</h2>
+        <p>Short observations from the edge of movement: the practices, objects, and decisions that make roaming feel grounded.</p>
+      </div>
+
+      <div class="notes-grid">
+        {% for note in fieldNotes %}
+          <article class="field-note">
+            <span class="number">{{ note.number }}</span>
+            <h3>{{ note.title }}</h3>
+            <p>{{ note.text }}</p>
+          </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="about" id="about">
+    <div class="section-inner about-copy">
+      <p class="eyebrow">The Philosophy</p>
+      <h2>Experience as a discipline</h2>
+      <p>Now Roaming is built on the idea that travel can be more than escape. It can be a practice: physical movement in service of clearer perception, better questions, deeper courage, and a little less noise between you and the life you actually mean to live.</p>
+    </div>
+  </section>
+
+  <section id="subscribe">
+    <div class="section-inner">
+      <div class="newsletter">
+        <div>
+          <p class="eyebrow">Dispatches</p>
+          <h2>Get the next route</h2>
+          <p>Monthly notes from the road: essays, itineraries, hard-won travel lessons, and the inner weather behind the outer miles.</p>
+        </div>
+        <form class="signup" aria-label="Subscribe to Now Roaming updates">
+          <label class="sr-only" for="email">Email address</label>
+          <input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="email" required>
+          <button type="submit">Join</button>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>

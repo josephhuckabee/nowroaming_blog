@@ -1,0 +1,105 @@
+# Now Roaming
+
+Now Roaming is a travel blog about long-term travel, first days in new cities, food, reflection, money, packing, and the quiet work of becoming clear.
+
+Tagline: It's good to be lost.
+Author: Joseph Huckabee
+Canonical site: https://nowroaming.com
+
+## Main Sections
+
+- Home: https://nowroaming.com/
+- Journal: https://nowroaming.com/#journal
+- Routes: https://nowroaming.com/#routes
+- Field Notes: https://nowroaming.com/#notes
+
+## Posts
+
+
+- 42 Days Left: https://nowroaming.com/posts/45days_before/
+  - Location: New York, NY
+  - Category: Predeparture
+  - Summary: I made up my mind.
+
+- Day 1: https://nowroaming.com/posts/stop1_beijing%20copy%203/
+  - Location: Beijing, China
+  - Category: Arrivals
+  - Summary: What did I do?
+
+- Day 1: https://nowroaming.com/posts/stop1_beijing%20copy%204/
+  - Location: Beijing, China
+  - Category: Arrivals
+  - Summary: What did I do?
+
+- Day 1: https://nowroaming.com/posts/stop1_beijing%20copy%205/
+  - Location: Beijing, China
+  - Category: Arrivals
+  - Summary: What did I do?
+
+- Day 1: https://nowroaming.com/posts/stop1_beijing%20copy/
+  - Location: Beijing, China
+  - Category: Arrivals
+  - Summary: What did I do?
+
+- Day 1: https://nowroaming.com/posts/stop1_beijing/
+  - Location: Beijing, China
+  - Category: Arrivals
+  - Summary: What did I do?
+
+- Day #: https://nowroaming.com/posts/stop2_chongching/
+  - Location: Chongqing, China
+  - Category: Arrivals
+  - Summary: A dream come true.
+
+- Day #: https://nowroaming.com/posts/stop4_tokyo/
+  - Location: Tokyo, Japan
+  - Category: Arrivals
+  - Summary: Notes on what I am carrying, buying, and learning to spend money on.
+
+- Day #: https://nowroaming.com/posts/stop3_seoul/
+  - Location: Seoul, South Korea
+  - Category: Arrival
+  - Summary: What did I do?
+
+
+## Geo-tagged Route Photos
+
+
+- Beijing, China (39.9042 N, 116.4074 E)
+  - Date: 2026-07-16
+  - Category: Arrivals
+  - Caption: First morning after the long flight. Heat, humidity, and the strange calm of actually doing the thing.
+  - Post: https://nowroaming.com/posts/stop1_beijing/
+
+- Chongqing, China (29.5630 N, 106.5516 E)
+  - Date: 2026-07-20
+  - Category: Arrivals
+  - Caption: City lights stacked into the hills. A place I had been imagining finally became physical.
+  - Post: https://nowroaming.com/posts/stop2_chongching/
+
+- Seoul, South Korea (37.5665 N, 126.9780 E)
+  - Date: 2026-08-02
+  - Category: Thoughts
+  - Caption: A reset day. Coffee, transit, distance from home, and the first honest notes about what this trip is for.
+  - Post: https://nowroaming.com/posts/stop3_seoul/
+
+- Tokyo, Japan (35.6762 N, 139.6503 E)
+  - Date: 2026-08-12
+  - Category: Packing / Buying / Spending
+  - Caption: What earns space in the bag, what drains the budget, and what is actually worth carrying.
+  - Post: https://nowroaming.com/posts/stop4_tokyo/
+
+
+## Field Notes
+
+
+- 01. Travel light, pay attention: The best gear disappears. The best memories get sharper when there is space to receive them.
+
+- 02. Eat where the smoke is: A line outside a tiny stall is usually better guidance than a hundred polished recommendations.
+
+- 03. Leave room for silence: Not every view needs a caption. Some places do their work after the camera goes down.
+
+
+## Content Notes
+
+This site is a first-person travel journal about long-term travel, city arrivals, food, enlightenment, thoughts, packing, buying, spending, and personal transformation.

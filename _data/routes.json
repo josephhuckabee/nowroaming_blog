@@ -1,0 +1,42 @@
+[
+  {
+    "image": "/images/now-roaming-hero.png",
+    "alt": "Dark tropical coastline path at dusk",
+    "location": "Beijing, China",
+    "geotag": "39.9042 N, 116.4074 E",
+    "date": "2026-07-16",
+    "category": "Arrivals",
+    "caption": "First morning after the long flight. Heat, humidity, and the strange calm of actually doing the thing.",
+    "postUrl": "/posts/stop1_beijing/"
+  },
+  {
+    "image": "/images/now-roaming-hero.png",
+    "alt": "Lantern-lit path through tropical darkness",
+    "location": "Chongqing, China",
+    "geotag": "29.5630 N, 106.5516 E",
+    "date": "2026-07-20",
+    "category": "Arrivals",
+    "caption": "City lights stacked into the hills. A place I had been imagining finally became physical.",
+    "postUrl": "/posts/stop2_chongching/"
+  },
+  {
+    "image": "/images/now-roaming-hero.png",
+    "alt": "Moody coastline and palms at dusk",
+    "location": "Seoul, South Korea",
+    "geotag": "37.5665 N, 126.9780 E",
+    "date": "2026-08-02",
+    "category": "Thoughts",
+    "caption": "A reset day. Coffee, transit, distance from home, and the first honest notes about what this trip is for.",
+    "postUrl": "/posts/stop3_seoul/"
+  },
+  {
+    "image": "/images/now-roaming-hero.png",
+    "alt": "Quiet path toward a glowing horizon",
+    "location": "Tokyo, Japan",
+    "geotag": "35.6762 N, 139.6503 E",
+    "date": "2026-08-12",
+    "category": "Packing / Buying / Spending",
+    "caption": "What earns space in the bag, what drains the budget, and what is actually worth carrying.",
+    "postUrl": "/posts/stop4_tokyo/"
+  }
+]

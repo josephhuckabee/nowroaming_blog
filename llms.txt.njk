@@ -1,0 +1,47 @@
+---
+permalink: /llms.txt
+eleventyExcludeFromCollections: true
+---
+# {{ site.name }}
+
+{{ site.description }}
+
+Tagline: {{ site.tagline | safe }}
+Author: {{ site.author.name }}
+Canonical site: {{ site.url }}
+
+## Main Sections
+
+- Home: {{ "/" | absoluteUrl(site.url) }}
+- Journal: {{ "/#journal" | absoluteUrl(site.url) }}
+- Routes: {{ "/#routes" | absoluteUrl(site.url) }}
+- Field Notes: {{ "/#notes" | absoluteUrl(site.url) }}
+
+## Posts
+
+{% for post in collections.posts %}
+- {{ post.data.title }}: {{ post.url | absoluteUrl(site.url) }}
+  - Location: {{ post.data.location }}
+  - Category: {{ post.data.category }}
+  - Summary: {{ post.data.excerpt }}
+{% endfor %}
+
+## Geo-tagged Route Photos
+
+{% for route in routes %}
+- {{ route.location }} ({{ route.geotag }})
+  - Date: {{ route.date }}
+  - Category: {{ route.category }}
+  - Caption: {{ route.caption }}
+  - Post: {{ route.postUrl | absoluteUrl(site.url) }}
+{% endfor %}
+
+## Field Notes
+
+{% for note in fieldNotes %}
+- {{ note.number }}. {{ note.title }}: {{ note.text }}
+{% endfor %}
+
+## Content Notes
+
+This site is a first-person travel journal about long-term travel, city arrivals, food, enlightenment, thoughts, packing, buying, spending, and personal transformation.
