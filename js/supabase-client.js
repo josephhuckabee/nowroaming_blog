@@ -15,8 +15,13 @@ function readJwtPayload(token) {
 
 export function supabaseKeyProblem(key) {
   if (!key) return "";
+  const normalizedKey = String(key).trim();
+  const lowerKey = normalizedKey.toLowerCase();
+  if (lowerKey.startsWith("sb_secret_") || lowerKey.includes("sb_secret_")) {
+    return "The configured SUPABASE_ANON_KEY is a Supabase secret key. Replace it with the anon public or publishable browser key in Vercel and rebuild.";
+  }
   const payload = readJwtPayload(key);
-  if (payload?.role === "service_role" || String(key).toLowerCase().includes("service_role")) {
+  if (payload?.role === "service_role" || lowerKey.includes("service_role")) {
     return "The configured SUPABASE_ANON_KEY is a service role key. Replace it with the public anon key in Vercel and rebuild.";
   }
   if (payload?.role && payload.role !== "anon") {

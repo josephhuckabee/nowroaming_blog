@@ -4,7 +4,7 @@
   "private": true,
   "description": "Now Roaming travel blog built with Eleventy.",
   "scripts": {
-    "build": "eleventy",
+    "build": "node scripts/clean-site.js && eleventy",
     "dev": "eleventy --serve"
   },
   "devDependencies": {

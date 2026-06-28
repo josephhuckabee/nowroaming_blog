@@ -29,14 +29,19 @@ function readJwtPayload(token) {
 
 function assertPublicAnonKey(key) {
   if (!key) return "";
+  const normalizedKey = String(key).trim();
+  const lowerKey = normalizedKey.toLowerCase();
+  if (lowerKey.startsWith("sb_secret_") || lowerKey.includes("sb_secret_")) {
+    throw new Error("SUPABASE_ANON_KEY contains a Supabase secret key. Use the anon public or publishable browser key instead.");
+  }
   const payload = readJwtPayload(key);
-  if (payload?.role === "service_role" || String(key).toLowerCase().includes("service_role")) {
+  if (payload?.role === "service_role" || lowerKey.includes("service_role")) {
     throw new Error("SUPABASE_ANON_KEY contains a service role key. Replace it with the public anon key before building.");
   }
   if (payload?.role && payload.role !== "anon") {
     throw new Error(`SUPABASE_ANON_KEY must be the public anon key. Found Supabase role "${payload.role}".`);
   }
-  return key;
+  return normalizedKey;
 }
 
 module.exports = {
