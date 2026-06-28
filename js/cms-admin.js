@@ -1,6 +1,13 @@
 import DOMPurify from "https://esm.sh/dompurify@3.2.6";
-import { supabase, cmsConfig, escapeHtml, estimateReadTime, formatDate, hasSupabaseConfig } from "./supabase-client.js";
-
+import {
+  supabase,
+  cmsConfig,
+  escapeHtml,
+  estimateReadTime,
+  formatDate,
+  hasSupabaseConfig,
+  supabaseKeyProblem
+} from "./supabase-client.js";
 const page = document.querySelector("[data-admin-page]")?.dataset.adminPage;
 const loginForm = document.querySelector("[data-admin-login]");
 const logoutButtons = document.querySelectorAll("[data-admin-logout]");
