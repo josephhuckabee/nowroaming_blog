@@ -41,10 +41,6 @@ export function hasSupabaseConfig() {
   return Boolean(cmsConfig.supabaseUrl && cmsConfig.supabaseAnonKey && !supabaseKeyProblem(cmsConfig.supabaseAnonKey));
 }
 
-export const supabase = hasSupabaseConfig()
-  ? createClient(cmsConfig.supabaseUrl, cmsConfig.supabaseAnonKey)
-  : null;
-
 export function slugify(value) {
   return String(value || "")
     .toLowerCase()
