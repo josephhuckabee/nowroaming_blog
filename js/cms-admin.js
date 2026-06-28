@@ -340,14 +340,14 @@ async function initEditor() {
     }
     const currentStatus = loadedPost?.status || form.status.value;
     if (autosave && postId && currentStatus !== "draft") {
-      const { error } = await supabase.from("posts").update({
+      const { error } = await updatePostRecord({
         autosave_payload: makeAutosavePayload(payload, form),
         autosaved_at: new Date().toISOString()
-      }).eq("id", postId);
+      }, postId);
       saving = false;
       if (error) {
         setSaveStatus("Autosave failed");
-        setMessage(error.message, message);
+        setMessage("Autosave could not be stored. Try saving the draft manually.", message);
         return null;
       }
       markSaved();
@@ -390,7 +390,7 @@ async function initEditor() {
   document.querySelector("[data-preview-post]")?.addEventListener("click", async () => {
     if (dirty || !postId) await savePost();
     if (postId) {
-      window.open(`/blog/post.html?preview=${encodeURIComponent(postId)}`, "_blank", "noopener");
+      window.open(`/blog/post/?preview=${encodeURIComponent(postId)}`, "_blank", "noopener");
       return;
     }
     previewPost(form, editor);
@@ -458,6 +458,18 @@ async function savePostRecord(payload, postId) {
     delete safePayload[missing];
   }
   return { data: null, error: new Error("Post save failed after removing unsupported columns.") };
+}
+
+async function updatePostRecord(payload, postId) {
+  const safePayload = { ...payload };
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const result = await supabase.from("posts").update(safePayload).eq("id", postId);
+    if (!result.error) return result;
+    const missing = missingColumnName(result.error.message);
+    if (!missing || !(missing in safePayload)) return result;
+    delete safePayload[missing];
+  }
+  return { error: new Error("Post update failed after removing unsupported columns.") };
 }
 
 function missingColumnName(message) {
@@ -771,13 +783,16 @@ function previewPost(form, editor) {
   const dialog = document.querySelector("[data-preview-dialog]");
   const content = document.querySelector("[data-preview-content]");
   const html = editor.innerHTML;
+  const gallery = parseJsonField(form.gallery.value, []);
   content.innerHTML = `
     <header class="post-hero">
       <p class="eyebrow">Journal</p>
       <h1>${escapeHtml(form.title.value || "Untitled")}</h1>
       <p>${escapeHtml(form.excerpt.value || form.subtitle.value || "")}</p>
     </header>
+    ${form.featured_image_url.value ? `<img class="post-featured-image" src="${escapeHtml(form.featured_image_url.value)}" alt="">` : ""}
     <div class="post-body">${sanitizeRichText(html)}</div>
+    ${gallery.length ? `<div class="image-gallery">${gallery.map((item) => `<figure><img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.alt || "")}"><figcaption>${escapeHtml(item.caption || "")}</figcaption></figure>`).join("")}</div>` : ""}
   `;
   dialog.showModal();
   document.querySelector("[data-close-preview]").onclick = () => dialog.close();
@@ -854,6 +869,7 @@ async function uploadMediaFile(file, folderValue = "") {
     name: optimized.name,
     mime_type: optimized.type,
     size_bytes: optimized.size,
+    is_public: true,
     folder: folderName
   };
   const { error: rowError } = await supabase.from("media").insert(row);
@@ -1184,13 +1200,18 @@ async function initCheckins() {
 
   document.querySelector("[data-checkin-cover-button]")?.addEventListener("click", () => coverInput.click());
   coverInput?.addEventListener("change", async () => {
-    const file = coverInput.files?.[0];
-    if (!file) return;
+    const files = [...(coverInput.files || [])].filter((file) => file.type.startsWith("image/"));
+    if (!files.length) return;
     const coverMessage = document.querySelector("[data-checkin-cover-message]");
-    setMessage("Uploading...", coverMessage);
-    const { data, error } = await uploadMediaFile(file, "check-ins");
-    if (error) return setMessage(`Upload failed: ${error.message}`, coverMessage);
-    form.cover_image_url.value = data.url;
+    const photos = parseJsonField(form.photos.value, []);
+    setMessage("Uploading photos...", coverMessage);
+    for (const file of files) {
+      const { data, error } = await uploadMediaFile(file, "check-ins");
+      if (error) return setMessage(`Upload failed: ${error.message}`, coverMessage);
+      photos.push({ url: data.url, name: file.name });
+      form.cover_image_url.value ||= data.url;
+    }
+    form.photos.value = JSON.stringify(photos);
     renderCheckinCover();
     setMessage("Uploaded.", coverMessage);
   });
@@ -1201,6 +1222,7 @@ async function initCheckins() {
     form.is_public.value = "true";
     form.sort_order.value = "0";
     form.cover_image_url.value = "";
+    form.photos.value = "[]";
     form.related_post_slug.value = "";
     if (marker) marker.remove();
     marker = null;
@@ -1220,13 +1242,13 @@ async function initCheckins() {
       longitude: Number(form.longitude.value),
       visited_at: form.visited_at.value || new Date().toISOString().slice(0, 10),
       cover_image_url: form.cover_image_url.value || null,
+      photos: parseJsonField(form.photos.value, []),
       journal_note: form.journal_note.value.trim() || null,
       related_post_slug: form.related_post_slug.value || postsByTitle.get(form.related_post_search.value) || null,
       is_public: form.is_public.value === "true",
       sort_order: Number(form.sort_order.value || 0)
     };
-    const request = form.id.value ? checkInsFrom().update(payload).eq("id", form.id.value) : checkInsFrom().insert(payload);
-    const { error } = await request;
+    const { error } = await saveCheckinRecord(payload, form.id.value);
     setMessage(error ? error.message : "Check-in saved.", message);
     if (!error) await render();
   });
@@ -1245,7 +1267,10 @@ async function initCheckins() {
   }
 
   function renderCheckinCover() {
-    coverPreview.innerHTML = form.cover_image_url.value ? `<img src="${escapeHtml(form.cover_image_url.value)}" alt="">` : `<span>No image selected</span>`;
+    const photos = parseJsonField(form.photos.value, []);
+    coverPreview.innerHTML = photos.length
+      ? photos.map((photo) => `<img src="${escapeHtml(photo.url || photo)}" alt="">`).join("")
+      : form.cover_image_url.value ? `<img src="${escapeHtml(form.cover_image_url.value)}" alt="">` : `<span>No photos selected</span>`;
   }
 
   async function render() {
@@ -1264,7 +1289,8 @@ async function initCheckins() {
     list.querySelectorAll("[data-edit-checkin]").forEach((button) => button.addEventListener("click", () => {
       const item = data.find((row) => row.id === button.dataset.editCheckin);
       Object.entries(item).forEach(([key, value]) => {
-        if (form.elements[key]) form.elements[key].value = value ?? "";
+        if (!form.elements[key]) return;
+        form.elements[key].value = typeof value === "object" && value !== null ? JSON.stringify(value) : value ?? "";
       });
       form.is_public.value = String(item.is_public);
       const post = [...postsByTitle].find(([, slug]) => slug === item.related_post_slug);
@@ -1294,6 +1320,19 @@ function checkInsFrom() {
 async function detectCheckInsTable() {
   const first = await supabase.from("check_ins").select("id").limit(1);
   activeCheckInsTable = first.error ? "checkins" : "check_ins";
+}
+
+async function saveCheckinRecord(payload, checkinId) {
+  const safePayload = { ...payload };
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const request = checkinId ? checkInsFrom().update(safePayload).eq("id", checkinId) : checkInsFrom().insert(safePayload);
+    const result = await request;
+    if (!result.error) return result;
+    const missing = missingColumnName(result.error.message);
+    if (!missing || !(missing in safePayload)) return result;
+    delete safePayload[missing];
+  }
+  return { error: new Error("Check-in save failed after removing unsupported columns.") };
 }
 
 function parseJsonField(value, fallback) {

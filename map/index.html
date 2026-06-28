@@ -5,6 +5,8 @@ description: Explore Now Roaming check-ins on an interactive world map.
 eleventyExcludeFromCollections: true
 ---
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
 <main id="main-content">
   <section class="map-section">
     <div class="section-inner">
@@ -23,6 +25,7 @@ eleventyExcludeFromCollections: true
           <p>Choose a public check-in to open its field note.</p>
         </aside>
       </div>
+      <div class="checkin-timeline" data-map-timeline aria-label="Travel check-in timeline"></div>
     </div>
   </section>
 </main>
@@ -30,4 +33,5 @@ eleventyExcludeFromCollections: true
 <script>
   window.NOW_ROAMING_CMS = {{ cms | json | safe }};
 </script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module" src="/js/cms-public.js"></script>

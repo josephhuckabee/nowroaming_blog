@@ -29,6 +29,7 @@ robots: noindex, nofollow
         <input type="hidden" name="latitude">
         <input type="hidden" name="longitude">
         <input type="hidden" name="cover_image_url">
+        <input type="hidden" name="photos" value="[]">
         <input type="hidden" name="related_post_slug">
 
         <label>Location name <input name="location_name" placeholder="Tokyo, Japan" required></label>
@@ -36,10 +37,10 @@ robots: noindex, nofollow
         <label>Journal note <textarea name="journal_note" rows="4" placeholder="A short field note from this stop."></textarea></label>
 
         <div class="asset-picker" data-checkin-cover>
-          <strong>Cover image</strong>
+          <strong>Photos</strong>
           <div data-checkin-cover-preview><span>No image selected</span></div>
-          <input type="file" data-checkin-cover-file accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml">
-          <button type="button" data-checkin-cover-button>Upload image</button>
+          <input type="file" data-checkin-cover-file accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" multiple>
+          <button type="button" data-checkin-cover-button>Upload photos</button>
           <p class="admin-message" data-checkin-cover-message></p>
         </div>
 
@@ -57,7 +58,7 @@ robots: noindex, nofollow
         <label>Sort order <input name="sort_order" type="number" step="1" value="0"></label>
 
         <div class="admin-actions stacked">
-          <button class="button" type="submit">Save check-in</button>
+          <button class="button" type="submit">Publish check-in</button>
           <button class="button secondary" type="button" data-use-current-location>Use current location</button>
           <button class="button secondary" type="button" data-new-checkin>New check-in</button>
         </div>

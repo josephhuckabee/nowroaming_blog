@@ -51,7 +51,7 @@ async function initHomeJournal() {
     homeJournalEl.innerHTML = `<p class="admin-message">The journal is temporarily unavailable.</p>`;
     return;
   }
-  const posts = (data || []).map(normalizePost);
+  const posts = await withSignedMedia((data || []).map(normalizePost));
   if (homePostCountEl) homePostCountEl.textContent = String(posts.length);
   renderHomeJournal(posts);
 }
@@ -62,8 +62,9 @@ function renderHomeJournal(posts) {
     return;
   }
   const [featured, ...secondary] = posts;
+  const featuredImage = featured.featured_image_url || "/images/now-roaming-hero.png";
   homeJournalEl.innerHTML = `
-    <a class="feature-post" href="${postUrl(featured)}">
+    <a class="feature-post" href="${postUrl(featured)}" style="--post-cover: url('${escapeAttribute(featuredImage)}')">
       <article>
         <div class="post-meta">
           <span>${formatDate(featured.published_at || featured.created_at)}</span>
@@ -91,7 +92,7 @@ async function initPublicList() {
     return;
   }
 
-  const posts = (data || []).map(normalizePost);
+  const posts = await withSignedMedia((data || []).map(normalizePost));
   hydrateFilters(posts, categorySelect, tagSelect);
   const render = () => renderList(posts, searchInput.value, categorySelect.value, tagSelect.value);
   [searchInput, categorySelect, tagSelect].forEach((control) => control.addEventListener("input", render));
@@ -125,8 +126,10 @@ function renderList(posts, query, categorySlug, tagSlug) {
 }
 
 function cardTemplate(post) {
+  const cover = post.featured_image_url ? `<img class="post-card-image" src="${escapeHtml(post.featured_image_url)}" alt="" loading="lazy">` : "";
   return `
-    <a class="post-card" href="${postUrl(post)}">
+    <a class="post-card${post.featured_image_url ? " has-image" : ""}" href="${postUrl(post)}">
+      ${cover}
       <article>
         <div class="post-meta">
           <span>${formatDate(post.published_at || post.created_at)}</span>
@@ -146,12 +149,13 @@ function categoryTags(post) {
 }
 
 async function initPostDetail() {
-  const slug = decodeURIComponent(location.pathname.replace(/^\/blog\/?/, "").replace(/\/$/, "")) || new URLSearchParams(location.search).get("slug");
-  const previewId = new URLSearchParams(location.search).get("preview");
+  const params = new URLSearchParams(location.search);
+  const slug = postSlugFromLocation(params);
+  const previewId = params.get("preview");
   const { post, error } = previewId ? await fetchPreviewPost(previewId) : await fetchPublishedPostBySlug(slug);
 
   if (error || !post) {
-    detailEl.innerHTML = `<header class="post-hero"><p class="eyebrow">Journal</p><h1>Post not found</h1><p>This post is not published yet.</p></header>`;
+    detailEl.innerHTML = `<header class="post-hero"><p class="eyebrow">Journal</p><h1>Post not found</h1><p>This post is not published yet, or the address has changed.</p><p><a class="button" href="/blog/">Return to Journal</a></p></header>`;
     return;
   }
 
@@ -188,6 +192,7 @@ async function fetchRelated(post) {
 
 function detailTemplate(post, related) {
   const categories = (post.categories || []).map((category) => `<span>${escapeHtml(category.name)}</span>`).join("");
+  const tags = (post.tags || []).map((tag) => `<span>${escapeHtml(tag.name)}</span>`).join("");
   const attachments = (post.attachments || []).map((file) => `<a class="button secondary" href="${escapeHtml(file.url)}" download>${escapeHtml(file.name || "Download")}</a>`).join("");
   const gallery = (post.gallery || []).length ? `<div class="image-gallery">${post.gallery.map((item) => `<figure><img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.alt || "")}" loading="lazy"><figcaption>${escapeHtml(item.caption || "")}</figcaption></figure>`).join("")}</div>` : "";
   const relatedHtml = related.length ? `
@@ -200,7 +205,7 @@ function detailTemplate(post, related) {
     <header class="post-hero">
       <p class="eyebrow">${escapeHtml(post.author || "Journal")}</p>
       <h1>${escapeHtml(post.title)}</h1>
-      ${categories ? `<div class="category-tags">${categories}</div>` : ""}
+      ${categories || tags ? `<div class="category-tags">${categories}${tags}</div>` : ""}
       <div class="post-meta">
         <span>${formatDate(post.published_at || post.publish_at || post.created_at)}</span>
         <span>${post.reading_time_minutes || 1} min read</span>
@@ -217,17 +222,27 @@ function detailTemplate(post, related) {
 
 async function initMap() {
   const card = document.querySelector("[data-map-card]");
+  const timeline = document.querySelector("[data-map-timeline]");
   const { data, error } = await selectCheckIns();
   if (error) {
     mapEl.innerHTML = `<p class="admin-message">The route map is temporarily unavailable.</p>`;
     return;
   }
-  const checkins = data || [];
-  mapEl.innerHTML = checkins.length ? checkins.map(pinTemplate).join("") : `<p class="admin-message">No public check-ins yet.</p>`;
-  mapEl.querySelectorAll("[data-checkin-id]").forEach((button) => button.addEventListener("click", () => {
-    const checkin = checkins.find((item) => item.id === button.dataset.checkinId);
-    card.innerHTML = checkinCard(checkin);
-  }));
+  const checkins = (data || [])
+    .map(normalizeCheckin)
+    .filter((item) => Number.isFinite(item.latitude) && Number.isFinite(item.longitude))
+    .sort((a, b) => new Date(a.visited_at || a.created_at) - new Date(b.visited_at || b.created_at));
+  if (!checkins.length) {
+    mapEl.innerHTML = `<p class="admin-message">No public check-ins yet.</p>`;
+    if (timeline) timeline.innerHTML = "";
+    return;
+  }
+  if (!window.L) {
+    mapEl.innerHTML = `<p class="admin-message">The route map could not load.</p>`;
+    return;
+  }
+  renderLeafletMap(mapEl, card, checkins);
+  if (timeline) renderCheckinTimeline(timeline, card, checkins);
 }
 
 async function fetchPublishedPostBySlug(slug) {
@@ -254,7 +269,7 @@ async function fetchPreviewPost(id) {
 }
 
 async function selectCheckIns() {
-  const query = (table) => supabase.from(table).select("*").eq("is_public", true).order("sort_order", { ascending: true });
+  const query = (table) => supabase.from(table).select("*").eq("is_public", true).order("visited_at", { ascending: true });
   const first = await query("check_ins");
   if (!first.error) return first;
   return query("checkins");
@@ -267,13 +282,86 @@ function pinTemplate(checkin) {
 }
 
 function checkinCard(checkin) {
+  const photos = checkin.photos.length
+    ? `<div class="map-card-gallery">${checkin.photos.map((photo) => `<img src="${escapeHtml(photo.url || photo)}" alt="${escapeHtml(photo.alt || "")}" loading="lazy">`).join("")}</div>`
+    : "";
   return `
     ${checkin.cover_image_url ? `<img src="${escapeHtml(checkin.cover_image_url)}" alt="" loading="lazy">` : ""}
     <p class="eyebrow">${escapeHtml(new Date(checkin.visited_at).toLocaleDateString())}</p>
     <h2>${escapeHtml(checkin.location_name)}</h2>
     <p>${escapeHtml(checkin.journal_note || "")}</p>
+    ${photos}
     ${checkin.related_post_slug ? `<a class="button" href="/blog/${encodeURIComponent(checkin.related_post_slug)}">Read the article</a>` : ""}
   `;
+}
+
+function postSlugFromLocation(params) {
+  const querySlug = params.get("slug");
+  if (querySlug) return decodeURIComponent(querySlug);
+  const path = location.pathname.replace(/\/$/, "");
+  if (path === "/blog/post" || path === "/blog/post.html" || path === "/blog") return "";
+  return decodeURIComponent(path.replace(/^\/blog\//, ""));
+}
+
+function escapeAttribute(value) {
+  return String(value || "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+async function withSignedMedia(posts) {
+  return Promise.all(posts.map(async (post) => {
+    const mediaMap = await signedPublishedMediaMap(post);
+    return applySignedMedia(post, mediaMap);
+  }));
+}
+
+function normalizeCheckin(checkin) {
+  const photos = Array.isArray(checkin.photos) ? checkin.photos : [];
+  const cover = checkin.cover_image_url ? [{ url: checkin.cover_image_url }] : [];
+  return {
+    ...checkin,
+    latitude: Number(checkin.latitude),
+    longitude: Number(checkin.longitude),
+    photos: photos.length ? photos : cover
+  };
+}
+
+function renderLeafletMap(container, card, checkins) {
+  container.innerHTML = "";
+  const map = window.L.map(container, { scrollWheelZoom: false });
+  window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap"
+  }).addTo(map);
+  const points = checkins.map((item) => [item.latitude, item.longitude]);
+  const route = window.L.polyline(points, { color: "#d3a650", weight: 3, opacity: 0.86 }).addTo(map);
+  checkins.forEach((checkin) => {
+    const marker = window.L.circleMarker([checkin.latitude, checkin.longitude], {
+      radius: 8,
+      color: "#070908",
+      weight: 2,
+      fillColor: "#d3a650",
+      fillOpacity: 1
+    }).addTo(map);
+    marker.on("click", () => {
+      card.innerHTML = checkinCard(checkin);
+    });
+  });
+  map.fitBounds(route.getBounds().pad(0.2));
+  card.innerHTML = checkinCard(checkins[checkins.length - 1]);
+}
+
+function renderCheckinTimeline(timeline, card, checkins) {
+  timeline.innerHTML = checkins.map((checkin) => `
+    <button type="button" class="checkin-timeline-item" data-checkin-id="${escapeHtml(checkin.id)}">
+      <span>${escapeHtml(formatDate(checkin.visited_at || checkin.created_at))}</span>
+      <strong>${escapeHtml(checkin.location_name)}</strong>
+      <em>${escapeHtml(checkin.journal_note || "")}</em>
+    </button>
+  `).join("");
+  timeline.querySelectorAll("[data-checkin-id]").forEach((button) => button.addEventListener("click", () => {
+    const checkin = checkins.find((item) => item.id === button.dataset.checkinId);
+    if (checkin) card.innerHTML = checkinCard(checkin);
+  }));
 }
 
 function setMeta(name, content, attr = "name") {
