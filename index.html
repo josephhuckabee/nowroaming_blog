@@ -4,10 +4,6 @@ title: Now Roaming
 description: Now Roaming is a dark tropical travel blog about movement, experience, and the path to enlightenment.
 ---
 
-{% set posts = collections.posts %}
-{% set featured = posts[0] %}
-{% set secondaryPosts = posts.slice(1, 4) %}
-
 <section class="hero" id="top" aria-label="Now Roaming introduction">
   <div class="hero-inner">
     <p class="eyebrow">Travel Journal / Inner Compass</p>
@@ -25,7 +21,7 @@ description: Now Roaming is a dark tropical travel blog about movement, experien
     </div>
     <div class="hero-stats" aria-label="Travel highlights">
       <div class="stat">
-        <strong>{{ posts.length }}</strong>
+        <strong data-home-post-count>0</strong>
         <span>Open routes</span>
       </div>
       <div class="stat">
@@ -48,53 +44,8 @@ description: Now Roaming is a dark tropical travel blog about movement, experien
         <p>Dispatches from humid mornings, night markets, ferry decks, mountain temples, and the places where experience starts acting like a teacher.</p>
       </div>
 
-      <div class="journal-grid">
-        <a class="feature-post" href="{{ featured.url }}">
-          <article>
-            <div class="post-meta">
-              <span>{{ featured.data.location }}</span>
-              <span>{{ featured.data.readTime }}</span>
-            </div>
-            {% if featured.data.category %}
-              <div class="category-tags" aria-label="Post categories">
-                {% if featured.data.category.length and featured.data.category is not string %}
-                  {% for item in featured.data.category %}
-                    <span>{{ item }}</span>
-                  {% endfor %}
-                {% else %}
-                  <span>{{ featured.data.category }}</span>
-                {% endif %}
-              </div>
-            {% endif %}
-            <h3>{{ featured.data.title }}</h3>
-            <p>{{ featured.data.excerpt }}</p>
-          </article>
-        </a>
-
-        <div class="post-list">
-          {% for post in secondaryPosts %}
-            <a class="post-card" href="{{ post.url }}">
-              <article>
-                <div class="post-meta">
-                  <span>{{ post.data.location }}</span>
-                </div>
-                {% if post.data.category %}
-                  <div class="category-tags" aria-label="Post categories">
-                    {% if post.data.category.length and post.data.category is not string %}
-                      {% for item in post.data.category %}
-                        <span>{{ item }}</span>
-                      {% endfor %}
-                    {% else %}
-                      <span>{{ post.data.category }}</span>
-                    {% endif %}
-                  </div>
-                {% endif %}
-                <h3>{{ post.data.title }}</h3>
-                <p>{{ post.data.excerpt }}</p>
-              </article>
-            </a>
-          {% endfor %}
-        </div>
+      <div class="journal-grid" data-home-journal>
+        <p class="admin-message">Loading the latest journal posts...</p>
       </div>
     </div>
   </section>
@@ -181,3 +132,5 @@ description: Now Roaming is a dark tropical travel blog about movement, experien
     </div>
   </section>
 </main>
+
+<script type="module" src="/js/cms-public.js"></script>

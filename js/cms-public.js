@@ -1,12 +1,16 @@
 import DOMPurify from "https://esm.sh/dompurify@3.2.6";
-import { cmsConfig, escapeHtml, formatDate, hasSupabaseConfig, postUrl, supabase, supabaseKeyProblem } from "./supabase-client.js";
+import { cmsConfig, escapeHtml, formatDate, hasSupabaseConfig, postUrl, supabase } from "./supabase-client.js";
 
 const listEl = document.querySelector("[data-public-posts]");
 const detailEl = document.querySelector("[data-post-detail]");
 const mapEl = document.querySelector("[data-world-map]");
+const homeJournalEl = document.querySelector("[data-home-journal]");
+const homePostCountEl = document.querySelector("[data-home-post-count]");
 
 if (!hasSupabaseConfig()) {
   showConfigMessage();
+} else if (homeJournalEl) {
+  initHomeJournal();
 } else if (listEl) {
   initPublicList();
 } else if (detailEl) {
@@ -16,27 +20,78 @@ if (!hasSupabaseConfig()) {
 }
 
 function showConfigMessage() {
-  const target = listEl || detailEl || mapEl;
+  const target = homeJournalEl || listEl || detailEl || mapEl;
   if (target) {
-    target.innerHTML = `<p class="admin-message">${escapeHtml(supabaseKeyProblem(cmsConfig.supabaseAnonKey) || "Supabase is not configured yet. Add SUPABASE_URL and SUPABASE_ANON_KEY, then rebuild.")}</p>`;
+    target.innerHTML = `<p class="admin-message">Journal posts are temporarily unavailable.</p>`;
   }
+}
+
+function publishedPostsQuery() {
+  const now = new Date().toISOString();
+  return supabase
+    .from("posts")
+    .select("*, post_categories(categories(*)), post_tags(tags(*))")
+    .eq("status", "published")
+    .or(`published_at.is.null,published_at.lte.${now}`)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+}
+
+function normalizePost(post) {
+  return {
+    ...post,
+    categories: post.categories || (post.post_categories || []).map((item) => item.categories).filter(Boolean),
+    tags: post.tags || (post.post_tags || []).map((item) => item.tags).filter(Boolean)
+  };
+}
+
+async function initHomeJournal() {
+  const { data, error } = await publishedPostsQuery();
+  if (error) {
+    homeJournalEl.innerHTML = `<p class="admin-message">The journal is temporarily unavailable.</p>`;
+    return;
+  }
+  const posts = (data || []).map(normalizePost);
+  if (homePostCountEl) homePostCountEl.textContent = String(posts.length);
+  renderHomeJournal(posts);
+}
+
+function renderHomeJournal(posts) {
+  if (!posts.length) {
+    homeJournalEl.innerHTML = `<p class="admin-message">No published journal posts yet.</p>`;
+    return;
+  }
+  const [featured, ...secondary] = posts;
+  homeJournalEl.innerHTML = `
+    <a class="feature-post" href="${postUrl(featured)}">
+      <article>
+        <div class="post-meta">
+          <span>${formatDate(featured.published_at || featured.created_at)}</span>
+          <span>${featured.reading_time_minutes || 1} min read</span>
+        </div>
+        ${categoryTags(featured)}
+        <h3>${escapeHtml(featured.title)}</h3>
+        <p>${escapeHtml(featured.excerpt || featured.subtitle || "")}</p>
+      </article>
+    </a>
+    <div class="post-list">
+      ${secondary.slice(0, 3).map(cardTemplate).join("")}
+    </div>
+  `;
 }
 
 async function initPublicList() {
   const searchInput = document.querySelector("[data-public-search]");
   const categorySelect = document.querySelector("[data-public-category]");
   const tagSelect = document.querySelector("[data-public-tag]");
-  const { data, error } = await supabase
-    .from("published_posts")
-    .select("*")
-    .order("published_at", { ascending: false });
+  const { data, error } = await publishedPostsQuery();
 
   if (error) {
-    listEl.innerHTML = `<p class="admin-message">${escapeHtml(error.message)}</p>`;
+    listEl.innerHTML = `<p class="admin-message">The journal is temporarily unavailable.</p>`;
     return;
   }
 
-  const posts = data || [];
+  const posts = (data || []).map(normalizePost);
   hydrateFilters(posts, categorySelect, tagSelect);
   const render = () => renderList(posts, searchInput.value, categorySelect.value, tagSelect.value);
   [searchInput, categorySelect, tagSelect].forEach((control) => control.addEventListener("input", render));
@@ -66,19 +121,18 @@ function renderList(posts, query, categorySlug, tagSlug) {
 
   listEl.innerHTML = filtered.length
     ? filtered.map(cardTemplate).join("")
-    : `<p class="admin-message">No published posts match that search.</p>`;
+    : `<p class="admin-message">No published journal posts found.</p>`;
 }
 
 function cardTemplate(post) {
-  const categories = (post.categories || []).map((category) => `<span>${escapeHtml(category.name)}</span>`).join("");
   return `
     <a class="post-card" href="${postUrl(post)}">
       <article>
         <div class="post-meta">
-          <span>${formatDate(post.publish_at || post.published_at)}</span>
+          <span>${formatDate(post.published_at || post.created_at)}</span>
           <span>${post.reading_time_minutes || 1} min read</span>
         </div>
-        ${categories ? `<div class="category-tags">${categories}</div>` : ""}
+        ${categoryTags(post)}
         <h3>${escapeHtml(post.title)}</h3>
         <p>${escapeHtml(post.excerpt || post.subtitle || "")}</p>
       </article>
@@ -86,13 +140,15 @@ function cardTemplate(post) {
   `;
 }
 
+function categoryTags(post) {
+  const categories = (post.categories || []).map((category) => `<span>${escapeHtml(category.name)}</span>`).join("");
+  return categories ? `<div class="category-tags">${categories}</div>` : "";
+}
+
 async function initPostDetail() {
   const slug = decodeURIComponent(location.pathname.replace(/^\/blog\/?/, "").replace(/\/$/, "")) || new URLSearchParams(location.search).get("slug");
-  const { data: post, error } = await supabase
-    .from("published_posts")
-    .select("*")
-    .eq("slug", slug)
-    .maybeSingle();
+  const previewId = new URLSearchParams(location.search).get("preview");
+  const { post, error } = previewId ? await fetchPreviewPost(previewId) : await fetchPublishedPostBySlug(slug);
 
   if (error || !post) {
     detailEl.innerHTML = `<header class="post-hero"><p class="eyebrow">Journal</p><h1>Post not found</h1><p>This post is not published yet.</p></header>`;
@@ -116,13 +172,13 @@ async function initPostDetail() {
 
 async function fetchRelated(post) {
   if ((post.related_post_ids || []).length) {
-    const { data } = await supabase.from("published_posts").select("*").in("id", post.related_post_ids).limit(3);
-    if ((data || []).length) return data;
+    const { data } = await publishedPostsQuery().in("id", post.related_post_ids).limit(3);
+    if ((data || []).length) return data.map(normalizePost);
   }
   const tagSlugs = (post.tags || []).map((tag) => tag.slug);
   const categorySlugs = (post.categories || []).map((category) => category.slug);
-  const { data } = await supabase.from("published_posts").select("*").neq("id", post.id).limit(6);
-  return (data || [])
+  const { data } = await publishedPostsQuery().neq("id", post.id).limit(6);
+  return (data || []).map(normalizePost)
     .filter((candidate) => {
       return (candidate.tags || []).some((tag) => tagSlugs.includes(tag.slug)) ||
         (candidate.categories || []).some((category) => categorySlugs.includes(category.slug));
@@ -146,7 +202,7 @@ function detailTemplate(post, related) {
       <h1>${escapeHtml(post.title)}</h1>
       ${categories ? `<div class="category-tags">${categories}</div>` : ""}
       <div class="post-meta">
-        <span>${formatDate(post.publish_at || post.published_at)}</span>
+        <span>${formatDate(post.published_at || post.publish_at || post.created_at)}</span>
         <span>${post.reading_time_minutes || 1} min read</span>
       </div>
       <p>${escapeHtml(post.excerpt || post.subtitle || "")}</p>
@@ -161,13 +217,9 @@ function detailTemplate(post, related) {
 
 async function initMap() {
   const card = document.querySelector("[data-map-card]");
-  const { data, error } = await supabase
-    .from("checkins")
-    .select("*")
-    .eq("is_public", true)
-    .order("sort_order", { ascending: true });
+  const { data, error } = await selectCheckIns();
   if (error) {
-    mapEl.innerHTML = `<p class="admin-message">${escapeHtml(error.message)}</p>`;
+    mapEl.innerHTML = `<p class="admin-message">The route map is temporarily unavailable.</p>`;
     return;
   }
   const checkins = data || [];
@@ -176,6 +228,36 @@ async function initMap() {
     const checkin = checkins.find((item) => item.id === button.dataset.checkinId);
     card.innerHTML = checkinCard(checkin);
   }));
+}
+
+async function fetchPublishedPostBySlug(slug) {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*, post_categories(categories(*)), post_tags(tags(*))")
+    .eq("slug", slug)
+    .eq("status", "published")
+    .or(`published_at.is.null,published_at.lte.${now}`)
+    .maybeSingle();
+  return { post: data ? normalizePost(data) : null, error };
+}
+
+async function fetchPreviewPost(id) {
+  const { data: session } = await supabase.auth.getSession();
+  if (!session.session) return { post: null, error: new Error("Preview requires admin session.") };
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*, post_categories(categories(*)), post_tags(tags(*))")
+    .eq("id", id)
+    .maybeSingle();
+  return { post: data ? normalizePost(data) : null, error };
+}
+
+async function selectCheckIns() {
+  const query = (table) => supabase.from(table).select("*").eq("is_public", true).order("sort_order", { ascending: true });
+  const first = await query("check_ins");
+  if (!first.error) return first;
+  return query("checkins");
 }
 
 function pinTemplate(checkin) {
@@ -205,6 +287,7 @@ async function signedPublishedMediaMap(post) {
     post.og_image_url,
     post.social_image_url,
     post.body_html,
+    JSON.stringify(post.gallery || []),
     JSON.stringify(post.attachments || [])
   ].filter(Boolean).join(" ");
   const { data } = await supabase.from("media").select("url,path").eq("is_public", true);
@@ -230,6 +313,10 @@ function applySignedMedia(post, mediaMap) {
     og_image_url: replace(post.og_image_url),
     social_image_url: replace(post.social_image_url),
     body_html: replace(post.body_html),
+    gallery: (post.gallery || []).map((item) => ({
+      ...item,
+      url: replace(item.url)
+    })),
     attachments: (post.attachments || []).map((item) => ({
       ...item,
       url: replace(item.url)

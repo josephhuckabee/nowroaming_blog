@@ -387,7 +387,14 @@ async function initEditor() {
     await savePost();
   });
 
-  document.querySelector("[data-preview-post]")?.addEventListener("click", () => previewPost(form, editor));
+  document.querySelector("[data-preview-post]")?.addEventListener("click", async () => {
+    if (dirty || !postId) await savePost();
+    if (postId) {
+      window.open(`/blog/post.html?preview=${encodeURIComponent(postId)}`, "_blank", "noopener");
+      return;
+    }
+    previewPost(form, editor);
+  });
   document.querySelector("[data-publish-post]")?.addEventListener("click", () => {
     form.status.value = "published";
     savePost({ publish: true });
@@ -847,8 +854,7 @@ async function uploadMediaFile(file, folderValue = "") {
     name: optimized.name,
     mime_type: optimized.type,
     size_bytes: optimized.size,
-    folder: folderName,
-    responsive_variants: optimized.responsiveVariants || []
+    folder: folderName
   };
   const { error: rowError } = await supabase.from("media").insert(row);
   if (rowError) return { error: rowError };
@@ -1128,6 +1134,7 @@ function readField(form, field) {
 }
 
 async function initCheckins() {
+  await detectCheckInsTable();
   const form = document.querySelector("[data-checkin-form]");
   const list = document.querySelector("[data-checkin-list]");
   const message = document.querySelector("[data-checkin-message]");
@@ -1218,7 +1225,7 @@ async function initCheckins() {
       is_public: form.is_public.value === "true",
       sort_order: Number(form.sort_order.value || 0)
     };
-    const request = form.id.value ? supabase.from("checkins").update(payload).eq("id", form.id.value) : supabase.from("checkins").insert(payload);
+    const request = form.id.value ? checkInsFrom().update(payload).eq("id", form.id.value) : checkInsFrom().insert(payload);
     const { error } = await request;
     setMessage(error ? error.message : "Check-in saved.", message);
     if (!error) await render();
@@ -1243,7 +1250,7 @@ async function initCheckins() {
 
   async function render() {
     list.innerHTML = `<p class="admin-message">Loading check-ins...</p>`;
-    const { data, error } = await supabase.from("checkins").select("*").order("sort_order", { ascending: true });
+    const { data, error } = await checkInsFrom().select("*").order("sort_order", { ascending: true });
     if (error) return list.innerHTML = `<p class="admin-message">${escapeHtml(error.message)}</p>`;
     list.innerHTML = (data || []).map((item) => `
       <article class="admin-row">
@@ -1268,7 +1275,7 @@ async function initCheckins() {
     }));
     list.querySelectorAll("[data-delete-checkin]").forEach((button) => button.addEventListener("click", async () => {
       if (!confirm("Delete this check-in?")) return;
-      const { error } = await supabase.from("checkins").delete().eq("id", button.dataset.deleteCheckin);
+      const { error } = await checkInsFrom().delete().eq("id", button.dataset.deleteCheckin);
       setMessage(error ? error.message : "Check-in deleted.", message);
       if (!error) await render();
     }));
@@ -1276,6 +1283,17 @@ async function initCheckins() {
 
   renderCheckinCover();
   await render();
+}
+
+let activeCheckInsTable = "check_ins";
+
+function checkInsFrom() {
+  return supabase.from(activeCheckInsTable);
+}
+
+async function detectCheckInsTable() {
+  const first = await supabase.from("check_ins").select("id").limit(1);
+  activeCheckInsTable = first.error ? "checkins" : "check_ins";
 }
 
 function parseJsonField(value, fallback) {

@@ -8,14 +8,5 @@ eleventyExcludeFromCollections: true
     <title>{{ site.name }}</title>
     <link>{{ site.url }}</link>
     <description>{{ site.description }}</description>
-    {% for post in collections.posts %}
-      <item>
-        <title>{{ post.data.title }}</title>
-        <link>{{ post.url | absoluteUrl(site.url) }}</link>
-        <guid>{{ post.url | absoluteUrl(site.url) }}</guid>
-        <pubDate>{{ post.date | isoDate }}</pubDate>
-        <description>{{ post.data.excerpt }}</description>
-      </item>
-    {% endfor %}
   </channel>
 </rss>

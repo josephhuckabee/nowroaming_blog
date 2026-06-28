@@ -17,15 +17,6 @@ Canonical site: {{ site.url }}
 - Routes: {{ "/#routes" | absoluteUrl(site.url) }}
 - Field Notes: {{ "/#notes" | absoluteUrl(site.url) }}
 
-## Posts
-
-{% for post in collections.posts %}
-- {{ post.data.title }}: {{ post.url | absoluteUrl(site.url) }}
-  - Location: {{ post.data.location }}
-  - Category: {{ post.data.category }}
-  - Summary: {{ post.data.excerpt }}
-{% endfor %}
-
 ## Geo-tagged Route Photos
 
 {% for route in routes %}
