@@ -2,6 +2,29 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const config = window.NOW_ROAMING_CMS || {};
 
+function readJwtPayload(token) {
+  const parts = String(token || "").split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(payload));
+  } catch {
+    return null;
+  }
+}
+
+export function supabaseKeyProblem(key) {
+  if (!key) return "";
+  const payload = readJwtPayload(key);
+  if (payload?.role === "service_role" || String(key).toLowerCase().includes("service_role")) {
+    return "The configured SUPABASE_ANON_KEY is a service role key. Replace it with the public anon key in Vercel and rebuild.";
+  }
+  if (payload?.role && payload.role !== "anon") {
+    return `The configured SUPABASE_ANON_KEY has role "${payload.role}". It must be the public anon key.`;
+  }
+  return "";
+}
+
 export const cmsConfig = {
   supabaseUrl: config.supabaseUrl || "",
   supabaseAnonKey: config.supabaseAnonKey || "",
@@ -10,7 +33,7 @@ export const cmsConfig = {
 };
 
 export function hasSupabaseConfig() {
-  return Boolean(cmsConfig.supabaseUrl && cmsConfig.supabaseAnonKey);
+  return Boolean(cmsConfig.supabaseUrl && cmsConfig.supabaseAnonKey && !supabaseKeyProblem(cmsConfig.supabaseAnonKey));
 }
 
 export const supabase = hasSupabaseConfig()

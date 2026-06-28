@@ -1,5 +1,5 @@
 import DOMPurify from "https://esm.sh/dompurify@3.2.6";
-import { escapeHtml, formatDate, hasSupabaseConfig, postUrl, supabase } from "./supabase-client.js";
+import { cmsConfig, escapeHtml, formatDate, hasSupabaseConfig, postUrl, supabase, supabaseKeyProblem } from "./supabase-client.js";
 
 const listEl = document.querySelector("[data-public-posts]");
 const detailEl = document.querySelector("[data-post-detail]");
@@ -15,7 +15,7 @@ if (!hasSupabaseConfig()) {
 function showConfigMessage() {
   const target = listEl || detailEl;
   if (target) {
-    target.innerHTML = `<p class="admin-message">Supabase is not configured yet. Add SUPABASE_URL and SUPABASE_ANON_KEY, then rebuild.</p>`;
+    target.innerHTML = `<p class="admin-message">${escapeHtml(supabaseKeyProblem(cmsConfig.supabaseAnonKey) || "Supabase is not configured yet. Add SUPABASE_URL and SUPABASE_ANON_KEY, then rebuild.")}</p>`;
   }
 }
 

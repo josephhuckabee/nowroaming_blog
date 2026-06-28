@@ -1,5 +1,5 @@
 import DOMPurify from "https://esm.sh/dompurify@3.2.6";
-import { cmsConfig, escapeHtml, estimateReadTime, formatDate, hasSupabaseConfig, slugify, supabase } from "./supabase-client.js";
+import { cmsConfig, escapeHtml, estimateReadTime, formatDate, hasSupabaseConfig, slugify, supabase, supabaseKeyProblem } from "./supabase-client.js";
 
 const page = document.querySelector("[data-admin-page]")?.dataset.adminPage;
 const loginForm = document.querySelector("[data-admin-login]");
@@ -7,10 +7,12 @@ const logoutButtons = document.querySelectorAll("[data-admin-logout]");
 const appNodes = document.querySelectorAll(".admin-app");
 const messageEl = document.querySelector("[data-admin-message]");
 
+const configProblem = supabaseKeyProblem(cmsConfig.supabaseAnonKey);
+
 if (!hasSupabaseConfig()) {
-  setMessage("Supabase is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY, then rebuild.");
+  setMessage(configProblem || "Supabase is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY, then rebuild.");
   if (!messageEl) {
-    document.querySelector(".admin-panel")?.insertAdjacentHTML("beforeend", `<p class="admin-message">Supabase is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY, then rebuild.</p>`);
+    document.querySelector(".admin-panel")?.insertAdjacentHTML("beforeend", `<p class="admin-message">${escapeHtml(configProblem || "Supabase is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY, then rebuild.")}</p>`);
   }
 } else {
   initAuth();

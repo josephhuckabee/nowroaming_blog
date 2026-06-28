@@ -57,10 +57,12 @@ Create `.env` locally and add the same values in Vercel:
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_ANON_KEY=your-public-anon-key
 ADMIN_EMAIL=you@example.com
-SITE_URL=https://nowroaming.com
+SITE_URL=https://youarenowroaming.com
 ```
 
-Never add the Supabase service role key to this project. The browser uses only the public anon key. Supabase Auth and Row Level Security are the security boundary.
+Never add the Supabase service role key to this project. In Vercel, `SUPABASE_ANON_KEY` must be the value from Supabase Project Settings > API > `anon public`. If you put the `service_role` key in `SUPABASE_ANON_KEY`, Supabase will reject browser auth with “Forbidden use of secret API key in browser.” The build now fails if it detects a service role key.
+
+Do not create a `SUPABASE_SERVICE_ROLE_KEY` environment variable for this static Eleventy app. There is no server-side admin API in this project that needs it.
 
 ## Supabase Tables
 
@@ -104,9 +106,11 @@ Added policies include:
 - Admins can manage posts, categories, tags, join tables, media rows, and settings.
 - Public users can read only posts with `status = 'published'` and `published_at <= now()`.
 - Drafts, unpublished posts, and scheduled posts are hidden from anonymous users.
+- Public users can read categories and tags only when they are attached to published posts.
 - Public users can read category/tag join rows only for published posts.
 - Public users can read media rows only when `media.is_public = true`.
 - Storage uploads, updates, and deletes require an authenticated admin.
+- Settings are admin-only in the database.
 
 ## Authentication Flow
 

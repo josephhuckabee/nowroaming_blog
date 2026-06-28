@@ -2,5 +2,5 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 
-Sitemap: https://nowroaming.com/sitemap.xml
-Sitemap: https://nowroaming.com/rss.xml
+Sitemap: https://youarenowroaming.com/sitemap.xml
+Sitemap: https://youarenowroaming.com/rss.xml

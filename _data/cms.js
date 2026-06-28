@@ -16,9 +16,32 @@ if (fs.existsSync(envPath)) {
   }
 }
 
+function readJwtPayload(token) {
+  const parts = String(token || "").split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(Buffer.from(payload, "base64").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function assertPublicAnonKey(key) {
+  if (!key) return "";
+  const payload = readJwtPayload(key);
+  if (payload?.role === "service_role" || String(key).toLowerCase().includes("service_role")) {
+    throw new Error("SUPABASE_ANON_KEY contains a service role key. Replace it with the public anon key before building.");
+  }
+  if (payload?.role && payload.role !== "anon") {
+    throw new Error(`SUPABASE_ANON_KEY must be the public anon key. Found Supabase role "${payload.role}".`);
+  }
+  return key;
+}
+
 module.exports = {
   supabaseUrl: process.env.SUPABASE_URL || "",
-  supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
+  supabaseAnonKey: assertPublicAnonKey(process.env.SUPABASE_ANON_KEY || ""),
   adminEmail: process.env.ADMIN_EMAIL || "",
-  siteUrl: process.env.SITE_URL || "https://nowroaming.com"
+  siteUrl: process.env.SITE_URL || "https://youarenowroaming.com"
 };

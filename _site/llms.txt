@@ -4,59 +4,59 @@ Now Roaming is a travel blog about long-term travel, first days in new cities, f
 
 Tagline: It's good to be lost.
 Author: Joseph Huckabee
-Canonical site: https://nowroaming.com
+Canonical site: https://youarenowroaming.com
 
 ## Main Sections
 
-- Home: https://nowroaming.com/
-- Journal: https://nowroaming.com/#journal
-- Routes: https://nowroaming.com/#routes
-- Field Notes: https://nowroaming.com/#notes
+- Home: https://youarenowroaming.com/
+- Journal: https://youarenowroaming.com/#journal
+- Routes: https://youarenowroaming.com/#routes
+- Field Notes: https://youarenowroaming.com/#notes
 
 ## Posts
 
 
-- 42 Days Left: https://nowroaming.com/posts/45days_before/
+- 42 Days Left: https://youarenowroaming.com/posts/45days_before/
   - Location: New York, NY
   - Category: Predeparture
   - Summary: I made up my mind.
 
-- Day 1: https://nowroaming.com/posts/stop1_beijing%20copy%203/
+- Day 1: https://youarenowroaming.com/posts/stop1_beijing%20copy%203/
   - Location: Beijing, China
   - Category: Arrivals
   - Summary: What did I do?
 
-- Day 1: https://nowroaming.com/posts/stop1_beijing%20copy%204/
+- Day 1: https://youarenowroaming.com/posts/stop1_beijing%20copy%204/
   - Location: Beijing, China
   - Category: Arrivals
   - Summary: What did I do?
 
-- Day 1: https://nowroaming.com/posts/stop1_beijing%20copy%205/
+- Day 1: https://youarenowroaming.com/posts/stop1_beijing%20copy%205/
   - Location: Beijing, China
   - Category: Arrivals
   - Summary: What did I do?
 
-- Day 1: https://nowroaming.com/posts/stop1_beijing%20copy/
+- Day 1: https://youarenowroaming.com/posts/stop1_beijing%20copy/
   - Location: Beijing, China
   - Category: Arrivals
   - Summary: What did I do?
 
-- Day 1: https://nowroaming.com/posts/stop1_beijing/
+- Day 1: https://youarenowroaming.com/posts/stop1_beijing/
   - Location: Beijing, China
   - Category: Arrivals
   - Summary: What did I do?
 
-- Day #: https://nowroaming.com/posts/stop2_chongching/
+- Day #: https://youarenowroaming.com/posts/stop2_chongching/
   - Location: Chongqing, China
   - Category: Arrivals
   - Summary: A dream come true.
 
-- Day #: https://nowroaming.com/posts/stop4_tokyo/
+- Day #: https://youarenowroaming.com/posts/stop4_tokyo/
   - Location: Tokyo, Japan
   - Category: Arrivals
   - Summary: Notes on what I am carrying, buying, and learning to spend money on.
 
-- Day #: https://nowroaming.com/posts/stop3_seoul/
+- Day #: https://youarenowroaming.com/posts/stop3_seoul/
   - Location: Seoul, South Korea
   - Category: Arrival
   - Summary: What did I do?
@@ -69,25 +69,25 @@ Canonical site: https://nowroaming.com
   - Date: 2026-07-16
   - Category: Arrivals
   - Caption: First morning after the long flight. Heat, humidity, and the strange calm of actually doing the thing.
-  - Post: https://nowroaming.com/posts/stop1_beijing/
+  - Post: https://youarenowroaming.com/posts/stop1_beijing/
 
 - Chongqing, China (29.5630 N, 106.5516 E)
   - Date: 2026-07-20
   - Category: Arrivals
   - Caption: City lights stacked into the hills. A place I had been imagining finally became physical.
-  - Post: https://nowroaming.com/posts/stop2_chongching/
+  - Post: https://youarenowroaming.com/posts/stop2_chongching/
 
 - Seoul, South Korea (37.5665 N, 126.9780 E)
   - Date: 2026-08-02
   - Category: Thoughts
   - Caption: A reset day. Coffee, transit, distance from home, and the first honest notes about what this trip is for.
-  - Post: https://nowroaming.com/posts/stop3_seoul/
+  - Post: https://youarenowroaming.com/posts/stop3_seoul/
 
 - Tokyo, Japan (35.6762 N, 139.6503 E)
   - Date: 2026-08-12
   - Category: Packing / Buying / Spending
   - Caption: What earns space in the bag, what drains the budget, and what is actually worth carrying.
-  - Post: https://nowroaming.com/posts/stop4_tokyo/
+  - Post: https://youarenowroaming.com/posts/stop4_tokyo/
 
 
 ## Field Notes

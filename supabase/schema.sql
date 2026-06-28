@@ -184,7 +184,16 @@ with check (exists (select 1 from public.users u where u.id = auth.uid() and u.r
 
 create policy "Public can read categories" on public.categories
 for select to anon, authenticated
-using (true);
+using (
+  exists (
+    select 1
+    from public.post_categories pc
+    join public.posts p on p.id = pc.post_id
+    where pc.category_id = categories.id
+      and p.status = 'published'
+      and p.published_at <= now()
+  )
+);
 
 create policy "Admins can manage tags" on public.tags
 for all to authenticated
@@ -193,7 +202,16 @@ with check (exists (select 1 from public.users u where u.id = auth.uid() and u.r
 
 create policy "Public can read tags" on public.tags
 for select to anon, authenticated
-using (true);
+using (
+  exists (
+    select 1
+    from public.post_tags pt
+    join public.posts p on p.id = pt.post_id
+    where pt.tag_id = tags.id
+      and p.status = 'published'
+      and p.published_at <= now()
+  )
+);
 
 create policy "Admins can manage post categories" on public.post_categories
 for all to authenticated
@@ -227,20 +245,21 @@ for all to authenticated
 using (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'))
 with check (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'));
 
-create policy "Public can read settings" on public.settings
-for select to anon, authenticated
-using (true);
-
 insert into public.settings (id, blog_title, blog_description, author_name)
 values (1, 'Now Roaming', 'It''s good to be lost.', 'Joseph Huckabee')
 on conflict (id) do nothing;
 
 create or replace function public.refresh_media_public_flags()
 returns void
-language sql
+language plpgsql
 security definer
 set search_path = public
 as $$
+begin
+  if not exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin') then
+    raise exception 'Admin role required';
+  end if;
+
   update public.media m
   set is_public = exists (
     select 1
@@ -254,6 +273,7 @@ as $$
         or p.attachments::text ilike '%' || m.url || '%'
       )
   );
+end;
 $$;
 
 grant execute on function public.refresh_media_public_flags() to authenticated;
