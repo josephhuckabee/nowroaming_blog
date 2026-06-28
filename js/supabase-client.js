@@ -80,3 +80,6 @@ export function escapeHtml(value) {
 export function postUrl(post) {
   return `/blog/${encodeURIComponent(post.slug)}`;
 }
+export const supabase = hasSupabaseConfig()
+  ? createClient(cmsConfig.supabaseUrl, cmsConfig.supabaseAnonKey)
+  : null;
