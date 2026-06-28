@@ -1,5 +1,4 @@
 import DOMPurify from "https://esm.sh/dompurify@3.2.6";
-import { marked } from "https://esm.sh/marked@13.0.3";
 import {
   supabase,
   cmsConfig,
@@ -193,7 +192,7 @@ async function initPosts(forcedStatus = "") {
 function renderPosts(posts, table, query, status, category, sort) {
   const needle = query.trim().toLowerCase();
   const filtered = posts
-    .filter((post) => !needle || [post.title, post.excerpt, post.body_html, post.body_markdown, ...post.categories.map((x) => x.name), ...post.tags.map((x) => x.name)].join(" ").toLowerCase().includes(needle))
+    .filter((post) => !needle || [post.title, post.excerpt, post.body_html, ...post.categories.map((x) => x.name), ...post.tags.map((x) => x.name)].join(" ").toLowerCase().includes(needle))
     .filter((post) => !status || post.status === status)
     .filter((post) => !category || post.categories.some((item) => item.slug === category))
     .sort((a, b) => sort === "oldest" ? new Date(a.updated_at) - new Date(b.updated_at) : new Date(b.updated_at) - new Date(a.updated_at));
@@ -239,7 +238,6 @@ function editPostHref(id) {
 async function initEditor() {
   const form = document.querySelector("[data-editor-form]");
   const editor = document.querySelector("[data-rich-editor]");
-  const markdown = document.querySelector("[data-markdown-editor]");
   const message = document.querySelector("[data-editor-message]");
   const saveStatus = document.querySelector("[data-save-status]");
   const slugSource = document.querySelector("[data-slug-source]");
@@ -272,17 +270,6 @@ async function initEditor() {
     markDirty();
   });
 
-  markdown?.addEventListener("input", () => {
-    if (form.editor_mode.value === "markdown") editor.innerHTML = sanitizeRichText(marked.parse(markdown.value || ""));
-    markDirty();
-  });
-  form.editor_mode?.addEventListener("change", () => {
-    markdown.hidden = form.editor_mode.value !== "markdown";
-    editor.hidden = form.editor_mode.value === "markdown";
-    if (form.editor_mode.value === "markdown") markdown.value ||= htmlToMarkdown(editor.innerHTML);
-    else editor.innerHTML = sanitizeRichText(marked.parse(markdown.value || ""));
-    markDirty();
-  });
   editor.addEventListener("input", markDirty);
   form.querySelectorAll("input, textarea, select").forEach((control) => {
     if (control.matches("[data-editor-image-input], [data-related-picker]")) return;
@@ -302,22 +289,23 @@ async function initEditor() {
     markDirty();
   }));
   document.querySelector("[data-template='travel-day']")?.addEventListener("click", () => {
-    if (editor.textContent.trim() || markdown.value.trim()) {
+    if (editor.textContent.trim()) {
       const ok = confirm("This will append the Travel Day template to the existing post body. Continue?");
       if (!ok) return;
     }
-    insertTravelDayTemplate(form, editor, markdown);
+    insertTravelDayTemplate(form, editor);
     markDirty();
   });
 
-  await hydrateRelatedPosts(form, markDirty);
+  await hydrateTaxonomyOptions();
+  setupEditorAssets(form, markDirty);
   if (postId) {
     const { data, error } = await supabase.from("posts").select("*, post_categories(categories(*)), post_tags(tags(*))").eq("id", postId).single();
     if (error) setMessage(error.message, message);
     else {
       loadedPost = normalizePost(data);
-      fillEditor(form, editor, markdown, loadedPost);
-      maybeRestoreAutosave(form, editor, markdown, loadedPost);
+      fillEditor(form, editor, loadedPost);
+      maybeRestoreAutosave(form, editor, loadedPost);
     }
   }
   setupEditorImageUploads(editor, markDirty);
@@ -331,7 +319,7 @@ async function initEditor() {
     setSaveStatus(autosave ? "Saving..." : "Saving...");
     let payload;
     try {
-      payload = collectPostPayload(form, editor, markdown);
+      payload = collectPostPayload(form, editor);
     } catch (error) {
       saving = false;
       setSaveStatus(autosave ? "Autosave failed" : "Unsaved changes");
@@ -339,8 +327,9 @@ async function initEditor() {
       return null;
     }
     if (publish) {
+      const now = new Date().toISOString();
       payload.status = "published";
-      payload.published_at = form.published_at.value || new Date().toISOString();
+      payload.published_at = now;
       payload.publish_at = payload.published_at;
       payload.scheduled_for = null;
     }
@@ -402,10 +391,9 @@ async function initEditor() {
     await savePost();
   });
 
-  document.querySelector("[data-preview-post]")?.addEventListener("click", () => previewPost(form, editor, markdown));
+  document.querySelector("[data-preview-post]")?.addEventListener("click", () => previewPost(form, editor));
   document.querySelector("[data-publish-post]")?.addEventListener("click", () => {
     form.status.value = "published";
-    if (!form.published_at.value) form.published_at.value = localDateTimeValue(new Date());
     savePost({ publish: true });
   });
   document.querySelector("[data-unpublish-post]")?.addEventListener("click", () => {
@@ -460,14 +448,16 @@ function getEditorPostId() {
 
 function insertBlock(type, editor) {
   let html = "";
-  if (type === "gallery") html = `<div class="image-gallery"><figure><img src="" alt="" loading="lazy"><figcaption>Caption</figcaption></figure></div>`;
+  if (type === "gallery") {
+    document.querySelector("[data-gallery-files]")?.click();
+    return;
+  }
   if (type === "checklist") html = `<ul class="checklist"><li><input type="checkbox"> Checklist item</li></ul>`;
   if (type === "table") html = `<table><tbody><tr><th>Heading</th><th>Heading</th></tr><tr><td>Cell</td><td>Cell</td></tr></tbody></table>`;
   if (type === "hr") html = `<hr>`;
   if (type === "image") {
-    const url = prompt("Image URL");
-    if (!url) return;
-    html = `<figure><img src="${escapeHtml(url)}" alt="" loading="lazy"><figcaption>Caption</figcaption></figure>`;
+    document.querySelector("[data-editor-image-input]")?.click();
+    return;
   }
   if (type === "youtube") {
     const id = extractYoutubeId(prompt("YouTube URL"));
@@ -483,7 +473,7 @@ function insertHtmlAtCursor(html, editor) {
   editor?.focus();
 }
 
-function insertTravelDayTemplate(form, editor, markdown) {
+function insertTravelDayTemplate(form, editor) {
   const title = form.title.value.trim() || "City, Country: Day X";
   const html = `
     <h2>First Impression</h2><p></p>
@@ -500,26 +490,7 @@ function insertTravelDayTemplate(form, editor, markdown) {
     form.title.value = title;
     form.slug.value ||= slugify(title);
   }
-  if (form.editor_mode.value === "markdown") {
-    markdown.value = `${markdown.value.trim()}\n\n${travelDayMarkdown()}`.trim();
-    editor.innerHTML = sanitizeRichText(marked.parse(markdown.value));
-    return;
-  }
   insertHtmlAtCursor(html, editor);
-}
-
-function travelDayMarkdown() {
-  return [
-    "## First Impression",
-    "## Where I Stayed",
-    "## What I Did",
-    "## What Surprised Me",
-    "## Cost Breakdown",
-    "## Favorite Moment",
-    "## What I'd Do Differently",
-    "## Photos",
-    "## Final Thought"
-  ].join("\n\n");
 }
 
 function extractYoutubeId(url) {
@@ -535,32 +506,32 @@ function makeAutosavePayload(payload, form) {
   };
 }
 
-function maybeRestoreAutosave(form, editor, markdown, post) {
+function maybeRestoreAutosave(form, editor, post) {
   if (!post.autosave_payload || !post.autosaved_at) return;
   if (post.updated_at && new Date(post.autosaved_at) <= new Date(post.updated_at)) return;
   const ok = confirm("A newer autosave exists for this post. Restore it into the editor?");
   if (!ok) return;
-  applyAutosavePayload(form, editor, markdown, post.autosave_payload);
+  applyAutosavePayload(form, editor, post.autosave_payload);
 }
 
-function applyAutosavePayload(form, editor, markdown, payload) {
+function applyAutosavePayload(form, editor, payload) {
   Object.entries(payload).forEach(([key, value]) => {
     if (!form.elements[key] || typeof value === "object") return;
     form.elements[key].value = value || "";
   });
   form.categories.value = (payload.categories || []).join(", ");
   form.tags.value = (payload.tags || []).join(", ");
-  markdown.value = payload.body_markdown || "";
-  editor.innerHTML = sanitizeRichText(payload.body_html || (payload.body_markdown ? marked.parse(payload.body_markdown) : ""));
+  editor.innerHTML = sanitizeRichText(payload.body_html || "");
 }
 
 function updateSeoPreview(form) {
-  const title = form.seo_title?.value || form.title?.value || "Post title";
-  const description = form.seo_description?.value || form.meta_description?.value || form.excerpt?.value || "SEO description preview.";
-  const socialTitle = form.social_title?.value || title;
-  const socialDescription = form.social_description?.value || description;
+  const generated = generatedMetadata(form);
+  const title = form.seo_title_override?.value || generated.title;
+  const description = form.seo_description_override?.value || generated.description;
+  const socialTitle = form.social_title_override?.value || title;
+  const socialDescription = form.social_description_override?.value || description;
   const image = form.social_image_url?.value || form.og_image_url?.value || form.featured_image_url?.value || "";
-  const slug = slugify(form.slug?.value || form.title?.value || "");
+  const slug = form.slug_override?.value ? slugify(form.slug_override.value) : generated.slug;
   const previewUrl = document.querySelector("[data-preview-url]");
   const previewTitle = document.querySelector("[data-preview-title]");
   const previewDescription = document.querySelector("[data-preview-description]");
@@ -578,7 +549,23 @@ function updateSeoPreview(form) {
   }
 }
 
-function fillEditor(form, editor, markdown, post) {
+function generatedMetadata(form) {
+  const title = (form.title?.value || "Untitled").trim();
+  const description = (form.excerpt?.value || form.subtitle?.value || plainTextFromHtml(document.querySelector("[data-rich-editor]")?.innerHTML || "")).trim().slice(0, 155) || "Now Roaming field note.";
+  return {
+    title,
+    description,
+    slug: slugify(form.slug_override?.value || form.slug?.value || title)
+  };
+}
+
+function plainTextFromHtml(html) {
+  const div = document.createElement("div");
+  div.innerHTML = html || "";
+  return div.textContent.replace(/\s+/g, " ").trim();
+}
+
+function fillEditor(form, editor, post) {
   Object.entries(post).forEach(([key, value]) => {
     if (form.elements[key] && typeof value !== "object") form.elements[key].value = value || "";
   });
@@ -587,30 +574,46 @@ function fillEditor(form, editor, markdown, post) {
   form.gallery.value = JSON.stringify(post.gallery || [], null, 2);
   form.attachments.value = JSON.stringify(post.attachments || [], null, 2);
   form.related_post_ids.value = (post.related_post_ids || []).join(", ");
-  if (post.published_at) form.published_at.value = new Date(post.published_at).toISOString().slice(0, 16);
-  markdown.value = post.body_markdown || "";
-  editor.innerHTML = sanitizeRichText(post.body_html || (post.body_markdown ? marked.parse(post.body_markdown) : ""));
+  if (post.publish_at || post.published_at) form.published_at.value = new Date(post.publish_at || post.published_at).toISOString().slice(0, 16);
+  if (form.slug_override) form.slug_override.value = post.slug || "";
+  if (form.canonical_override) form.canonical_override.value = post.canonical_url || "";
+  if (form.seo_title_override) form.seo_title_override.value = post.seo_title || "";
+  if (form.seo_description_override) form.seo_description_override.value = post.seo_description || post.meta_description || "";
+  if (form.social_title_override) form.social_title_override.value = post.social_title || "";
+  if (form.social_description_override) form.social_description_override.value = post.social_description || "";
+  if (form.scheduled_publish_at) form.scheduled_publish_at.value = post.scheduled_for ? new Date(post.scheduled_for).toISOString().slice(0, 16) : "";
+  document.querySelector("[data-current-post-status]").textContent = statusLabel(post);
+  editor.innerHTML = sanitizeRichText(post.body_html || "");
+  renderAssetPreviews(form);
 }
 
-function collectPostPayload(form, editor, markdown) {
-  const bodyMarkdown = form.editor_mode.value === "markdown" ? markdown.value.trim() : "";
-  const bodyHtml = sanitizeRichText(form.editor_mode.value === "markdown" ? marked.parse(bodyMarkdown) : editor.innerHTML.trim());
-  const status = form.status.value;
-  if (status === "scheduled" && !form.published_at.value) {
+function collectPostPayload(form, editor) {
+  const bodyHtml = sanitizeRichText(editor.innerHTML.trim());
+  const generated = generatedMetadata(form);
+  const scheduledAt = form.scheduled_publish_at?.value || "";
+  const status = scheduledAt ? "scheduled" : form.status.value;
+  if (status === "scheduled" && !scheduledAt) {
     throw new Error("Choose a publish date before scheduling this post.");
   }
+  form.slug.value = generated.slug;
+  form.seo_title.value = form.seo_title_override?.value || generated.title;
+  form.seo_description.value = form.seo_description_override?.value || generated.description;
+  form.social_title.value = form.social_title_override?.value || form.seo_title.value;
+  form.social_description.value = form.social_description_override?.value || form.seo_description.value;
+  form.meta_description.value = form.seo_description.value;
+  form.canonical_url.value = form.canonical_override?.value || "";
+  form.og_image_url.value = form.featured_image_url.value || form.social_image_url.value || "";
   return {
     title: form.title.value.trim(),
-    slug: slugify(form.slug.value),
+    slug: generated.slug,
     subtitle: form.subtitle.value.trim() || null,
     excerpt: form.excerpt.value.trim() || null,
     body_html: bodyHtml,
-    body_markdown: bodyMarkdown || null,
     author: form.author.value.trim() || "Joseph Huckabee",
     status,
-    published_at: status === "draft" ? null : form.published_at.value || new Date().toISOString(),
-    publish_at: status === "draft" ? null : form.published_at.value || new Date().toISOString(),
-    scheduled_for: status === "scheduled" ? form.published_at.value || null : null,
+    published_at: status === "draft" ? null : form.published_at.value || null,
+    publish_at: status === "draft" ? null : scheduledAt || form.published_at.value || null,
+    scheduled_for: status === "scheduled" ? scheduledAt : null,
     featured_image_url: form.featured_image_url.value.trim() || null,
     og_image_url: form.og_image_url.value.trim() || null,
     social_image_url: form.social_image_url.value.trim() || form.og_image_url.value.trim() || null,
@@ -625,25 +628,6 @@ function collectPostPayload(form, editor, markdown) {
     related_post_ids: fieldList(form.related_post_ids.value),
     reading_time_minutes: estimateReadTime(bodyHtml)
   };
-}
-
-function localDateTimeValue(date) {
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 16);
-}
-
-async function hydrateRelatedPosts(form, markDirty = () => {}) {
-  const select = form.querySelector("[data-related-picker]");
-  if (!select) return;
-  const { data } = await supabase.from("posts").select("id,title").order("updated_at", { ascending: false }).limit(100);
-  select.innerHTML = `<option value="">Add related post</option>${(data || []).map((post) => `<option value="${post.id}">${escapeHtml(post.title)}</option>`).join("")}`;
-  select.addEventListener("input", () => {
-    if (!select.value) return;
-    const current = fieldList(form.related_post_ids.value);
-    if (!current.includes(select.value)) form.related_post_ids.value = [...current, select.value].join(", ");
-    select.value = "";
-    markDirty();
-  });
 }
 
 async function syncTaxonomy(postId, categories, tags) {
@@ -671,6 +655,102 @@ function fieldList(value) {
   return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
 }
 
+function statusLabel(post) {
+  if (!post) return "Draft";
+  if (post.status === "scheduled") return `Scheduled for ${new Date(post.publish_at || post.scheduled_for).toLocaleString()}`;
+  if (post.status === "published") return `Published ${post.publish_at || post.published_at ? new Date(post.publish_at || post.published_at).toLocaleString() : ""}`;
+  return "Draft";
+}
+
+async function hydrateTaxonomyOptions() {
+  const [categories, tags] = await Promise.all([
+    supabase.from("categories").select("name").order("name"),
+    supabase.from("tags").select("name").order("name")
+  ]);
+  const categoryOptions = document.querySelector("[data-category-options]");
+  const tagOptions = document.querySelector("[data-tag-options]");
+  if (categoryOptions) categoryOptions.innerHTML = (categories.data || []).map((item) => `<option value="${escapeHtml(item.name)}"></option>`).join("");
+  if (tagOptions) tagOptions.innerHTML = (tags.data || []).map((item) => `<option value="${escapeHtml(item.name)}"></option>`).join("");
+}
+
+function setupEditorAssets(form, markDirty) {
+  document.querySelectorAll("[data-asset-picker]").forEach((picker) => {
+    const fieldName = picker.dataset.assetPicker;
+    const input = picker.querySelector("[data-asset-file]");
+    const button = picker.querySelector("[data-asset-button]");
+    const message = picker.querySelector("[data-asset-message]");
+    const upload = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      setMessage("Uploading...", message);
+      const { data, error } = await uploadMediaFile(file, "post-assets");
+      if (error) return setMessage(`Upload failed: ${error.message}`, message);
+      form.elements[fieldName].value = data.url;
+      if (fieldName === "featured_image_url" && !form.social_image_url.value) form.social_image_url.value = data.url;
+      if (fieldName === "featured_image_url") form.og_image_url.value = data.url;
+      setMessage("Uploaded.", message);
+      renderAssetPreviews(form);
+      markDirty();
+    };
+    button?.addEventListener("click", () => input.click());
+    input?.addEventListener("change", upload);
+  });
+
+  const galleryInput = document.querySelector("[data-gallery-files]");
+  document.querySelector("[data-gallery-button]")?.addEventListener("click", () => galleryInput?.click());
+  galleryInput?.addEventListener("change", async () => {
+    const current = parseJsonField(form.gallery.value, []);
+    for (const file of galleryInput.files) {
+      const { data, error } = await uploadMediaFile(file, "gallery");
+      if (error) {
+        alert(error.message);
+        continue;
+      }
+      current.push({ url: data.url, caption: "" });
+    }
+    form.gallery.value = JSON.stringify(current);
+    renderAssetPreviews(form);
+    markDirty();
+  });
+
+  const pdfInput = document.querySelector("[data-pdf-files]");
+  document.querySelector("[data-pdf-button]")?.addEventListener("click", () => pdfInput?.click());
+  pdfInput?.addEventListener("change", async () => {
+    const current = parseJsonField(form.attachments.value, []);
+    for (const file of pdfInput.files) {
+      const { data, error } = await uploadMediaFile(file, "pdfs");
+      if (error) {
+        alert(error.message);
+        continue;
+      }
+      current.push({ url: data.url, name: file.name });
+    }
+    form.attachments.value = JSON.stringify(current);
+    renderAssetPreviews(form);
+    markDirty();
+  });
+}
+
+function renderAssetPreviews(form) {
+  document.querySelectorAll("[data-asset-picker]").forEach((picker) => {
+    const fieldName = picker.dataset.assetPicker;
+    const url = form.elements[fieldName]?.value || "";
+    const preview = picker.querySelector("[data-asset-preview]");
+    if (!preview) return;
+    preview.innerHTML = url ? `<img src="${escapeHtml(url)}" alt="">` : `<span>No image selected</span>`;
+  });
+  const galleryList = document.querySelector("[data-gallery-list]");
+  if (galleryList) {
+    const items = parseJsonField(form.gallery.value, []);
+    galleryList.innerHTML = items.length ? items.map((item) => `<span>${escapeHtml(item.caption || "Gallery image")}</span>`).join("") : `<span>No gallery images yet</span>`;
+  }
+  const pdfList = document.querySelector("[data-pdf-list]");
+  if (pdfList) {
+    const items = parseJsonField(form.attachments.value, []);
+    pdfList.innerHTML = items.length ? items.map((item) => `<span>${escapeHtml(item.name || "PDF")}</span>`).join("") : `<span>No PDFs yet</span>`;
+  }
+}
+
 function normalizePost(post) {
   return {
     ...post,
@@ -679,10 +759,10 @@ function normalizePost(post) {
   };
 }
 
-function previewPost(form, editor, markdown) {
+function previewPost(form, editor) {
   const dialog = document.querySelector("[data-preview-dialog]");
   const content = document.querySelector("[data-preview-content]");
-  const html = form.editor_mode.value === "markdown" ? marked.parse(markdown.value || "") : editor.innerHTML;
+  const html = editor.innerHTML;
   content.innerHTML = `
     <header class="post-hero">
       <p class="eyebrow">${escapeHtml(form.author.value || "Journal")}</p>
@@ -1027,18 +1107,154 @@ function readField(form, field) {
 }
 
 async function initCheckins() {
-  const fields = [
-    { name: "location_name", label: "Location name", required: true },
-    { name: "latitude", label: "Latitude", type: "number", required: true },
-    { name: "longitude", label: "Longitude", type: "number", required: true },
-    { name: "visited_at", label: "Date", type: "date", required: true },
-    { name: "cover_image_url", label: "Cover image URL", type: "url" },
-    { name: "journal_note", label: "Short journal note", type: "textarea" },
-    { name: "related_post_slug", label: "Related blog post slug" },
-    { name: "is_public", label: "Public", type: "select", options: ["true", "false"] },
-    { name: "sort_order", label: "Sort order", type: "number" }
-  ];
-  await initSimpleManager("checkins", fields);
+  const form = document.querySelector("[data-checkin-form]");
+  const list = document.querySelector("[data-checkin-list]");
+  const message = document.querySelector("[data-checkin-message]");
+  const mapMessage = document.querySelector("[data-checkin-map-message]");
+  const coverInput = document.querySelector("[data-checkin-cover-file]");
+  const coverPreview = document.querySelector("[data-checkin-cover-preview]");
+  const postsByTitle = new Map();
+  form.visited_at.value ||= new Date().toISOString().slice(0, 10);
+
+  const posts = await supabase.from("posts").select("title,slug").order("updated_at", { ascending: false }).limit(200);
+  document.querySelector("[data-checkin-post-options]").innerHTML = (posts.data || []).map((post) => {
+    postsByTitle.set(post.title, post.slug);
+    return `<option value="${escapeHtml(post.title)}"></option>`;
+  }).join("");
+
+  let marker;
+  if (!window.L) {
+    setMessage("Leaflet did not load. Check the network/CSP settings.", mapMessage);
+    return;
+  }
+  const map = window.L.map(document.querySelector("[data-checkin-map]")).setView([20, 0], 2);
+  window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap"
+  }).addTo(map);
+  map.on("click", (event) => setCheckinCoordinates(event.latlng.lat, event.latlng.lng));
+
+  document.querySelector("[data-use-current-location]")?.addEventListener("click", () => {
+    if (!navigator.geolocation) return setMessage("Current location is not available in this browser.", mapMessage);
+    navigator.geolocation.getCurrentPosition((position) => {
+      setCheckinCoordinates(position.coords.latitude, position.coords.longitude);
+      map.setView([position.coords.latitude, position.coords.longitude], 11);
+    }, (error) => setMessage(error.message, mapMessage));
+  });
+
+  document.querySelector("[data-search-location]")?.addEventListener("click", async () => {
+    const query = document.querySelector("[data-checkin-location-search]").value.trim();
+    if (!query) return;
+    setMessage("Searching...", mapMessage);
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`);
+    const [result] = await response.json();
+    if (!result) return setMessage("No place found.", mapMessage);
+    form.location_name.value ||= result.display_name.split(",").slice(0, 2).join(",");
+    setCheckinCoordinates(Number(result.lat), Number(result.lon));
+    map.setView([Number(result.lat), Number(result.lon)], 10);
+  });
+
+  document.querySelector("[data-checkin-cover-button]")?.addEventListener("click", () => coverInput.click());
+  coverInput?.addEventListener("change", async () => {
+    const file = coverInput.files?.[0];
+    if (!file) return;
+    const coverMessage = document.querySelector("[data-checkin-cover-message]");
+    setMessage("Uploading...", coverMessage);
+    const { data, error } = await uploadMediaFile(file, "check-ins");
+    if (error) return setMessage(`Upload failed: ${error.message}`, coverMessage);
+    form.cover_image_url.value = data.url;
+    renderCheckinCover();
+    setMessage("Uploaded.", coverMessage);
+  });
+
+  document.querySelector("[data-new-checkin]")?.addEventListener("click", () => {
+    form.reset();
+    form.visited_at.value = new Date().toISOString().slice(0, 10);
+    form.is_public.value = "true";
+    form.sort_order.value = "0";
+    form.cover_image_url.value = "";
+    form.related_post_slug.value = "";
+    if (marker) marker.remove();
+    marker = null;
+    renderCheckinCover();
+  });
+
+  form.related_post_search.addEventListener("change", () => {
+    form.related_post_slug.value = postsByTitle.get(form.related_post_search.value) || "";
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.latitude.value || !form.longitude.value) return setMessage("Drop a pin or search a place before saving.", message);
+    const payload = {
+      location_name: form.location_name.value.trim(),
+      latitude: Number(form.latitude.value),
+      longitude: Number(form.longitude.value),
+      visited_at: form.visited_at.value || new Date().toISOString().slice(0, 10),
+      cover_image_url: form.cover_image_url.value || null,
+      journal_note: form.journal_note.value.trim() || null,
+      related_post_slug: form.related_post_slug.value || postsByTitle.get(form.related_post_search.value) || null,
+      is_public: form.is_public.value === "true",
+      sort_order: Number(form.sort_order.value || 0)
+    };
+    const request = form.id.value ? supabase.from("checkins").update(payload).eq("id", form.id.value) : supabase.from("checkins").insert(payload);
+    const { error } = await request;
+    setMessage(error ? error.message : "Check-in saved.", message);
+    if (!error) await render();
+  });
+
+  function setCheckinCoordinates(lat, lng) {
+    form.latitude.value = lat.toFixed(6);
+    form.longitude.value = lng.toFixed(6);
+    if (marker) marker.setLatLng([lat, lng]);
+    else marker = window.L.marker([lat, lng], { draggable: true }).addTo(map);
+    marker.on("dragend", () => {
+      const point = marker.getLatLng();
+      form.latitude.value = point.lat.toFixed(6);
+      form.longitude.value = point.lng.toFixed(6);
+    });
+    setMessage(`Pin set: ${lat.toFixed(4)}, ${lng.toFixed(4)}`, mapMessage);
+  }
+
+  function renderCheckinCover() {
+    coverPreview.innerHTML = form.cover_image_url.value ? `<img src="${escapeHtml(form.cover_image_url.value)}" alt="">` : `<span>No image selected</span>`;
+  }
+
+  async function render() {
+    list.innerHTML = `<p class="admin-message">Loading check-ins...</p>`;
+    const { data, error } = await supabase.from("checkins").select("*").order("sort_order", { ascending: true });
+    if (error) return list.innerHTML = `<p class="admin-message">${escapeHtml(error.message)}</p>`;
+    list.innerHTML = (data || []).map((item) => `
+      <article class="admin-row">
+        <div><strong>${escapeHtml(item.location_name)}</strong><span>${escapeHtml(item.visited_at)} / ${item.is_public ? "Public" : "Private"}</span></div>
+        <div class="admin-actions">
+          <button type="button" data-edit-checkin="${item.id}">Edit</button>
+          <button type="button" data-delete-checkin="${item.id}">Delete</button>
+        </div>
+      </article>
+    `).join("") || `<p class="admin-message">No check-ins yet. Drop a pin to create the first one.</p>`;
+    list.querySelectorAll("[data-edit-checkin]").forEach((button) => button.addEventListener("click", () => {
+      const item = data.find((row) => row.id === button.dataset.editCheckin);
+      Object.entries(item).forEach(([key, value]) => {
+        if (form.elements[key]) form.elements[key].value = value ?? "";
+      });
+      form.is_public.value = String(item.is_public);
+      const post = [...postsByTitle].find(([, slug]) => slug === item.related_post_slug);
+      form.related_post_search.value = post?.[0] || "";
+      setCheckinCoordinates(Number(item.latitude), Number(item.longitude));
+      map.setView([Number(item.latitude), Number(item.longitude)], 8);
+      renderCheckinCover();
+    }));
+    list.querySelectorAll("[data-delete-checkin]").forEach((button) => button.addEventListener("click", async () => {
+      if (!confirm("Delete this check-in?")) return;
+      const { error } = await supabase.from("checkins").delete().eq("id", button.dataset.deleteCheckin);
+      setMessage(error ? error.message : "Check-in deleted.", message);
+      if (!error) await render();
+    }));
+  }
+
+  renderCheckinCover();
+  await render();
 }
 
 function parseJsonField(value, fallback) {
@@ -1057,16 +1273,6 @@ async function safeRefreshMediaFlags() {
   } catch {
     /* The migration may not be applied yet in local projects. */
   }
-}
-
-function htmlToMarkdown(html) {
-  return String(html || "")
-    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, "\n## $1\n")
-    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, "\n### $1\n")
-    .replace(/<p[^>]*>(.*?)<\/p>/gi, "\n$1\n")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .trim();
 }
 
 function sanitizeRichText(html) {
