@@ -32,6 +32,16 @@ robots: noindex, nofollow
             <option value="markdown">Markdown</option>
           </select>
         </label>
+        <div class="editor-statusbar">
+          <span data-save-status>Saved</span>
+          <span>Cmd/Ctrl + S saves / Cmd/Ctrl + Shift + P publishes</span>
+        </div>
+        <div class="editor-upload-drop" data-editor-upload-drop>
+          <input data-editor-image-input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" multiple>
+          <p>Drop images here to upload and insert them into the story.</p>
+          <progress data-editor-upload-progress value="0" max="100" hidden></progress>
+          <p class="admin-message" data-editor-upload-message></p>
+        </div>
         <div class="editor-toolbar" aria-label="Rich text controls">
           <button type="button" data-command="formatBlock" data-value="h2">H2</button>
           <button type="button" data-command="formatBlock" data-value="h3">H3</button>
@@ -49,6 +59,7 @@ robots: noindex, nofollow
           <button type="button" data-insert="youtube">YouTube</button>
           <button type="button" data-insert="image">Image</button>
           <button type="button" data-insert="gallery">Gallery</button>
+          <button type="button" data-template="travel-day">Use Travel Day Template</button>
         </div>
         <div class="rich-editor post-body" data-rich-editor contenteditable="true" role="textbox" aria-multiline="true"></div>
         <textarea class="markdown-editor" name="body_markdown" data-markdown-editor rows="18" hidden></textarea>
@@ -73,7 +84,23 @@ robots: noindex, nofollow
         <label>Related posts <input name="related_post_ids" placeholder="post-id, post-id"></label>
         <label>Add related post <select data-related-picker aria-label="Add related post"></select></label>
         <label>SEO title <input name="seo_title"></label>
-        <label>Meta description <textarea name="meta_description" rows="4"></textarea></label>
+        <label>SEO description <textarea name="seo_description" rows="3"></textarea></label>
+        <label>Social share title <input name="social_title"></label>
+        <label>Social share description <textarea name="social_description" rows="3"></textarea></label>
+        <label>Social image <input name="social_image_url" type="url"></label>
+        <label>Meta description <textarea name="meta_description" rows="3"></textarea></label>
+        <div class="seo-preview" data-seo-preview>
+          <div class="search-preview">
+            <span data-preview-url>youarenowroaming.com/blog/</span>
+            <strong data-preview-title>Post title</strong>
+            <p data-preview-description>SEO description preview.</p>
+          </div>
+          <div class="social-preview">
+            <div data-preview-social-image></div>
+            <strong data-preview-social-title>Social title</strong>
+            <p data-preview-social-description>Social description preview.</p>
+          </div>
+        </div>
         <div class="admin-actions stacked">
           <button class="button" type="submit">Save</button>
           <button class="button secondary" type="button" data-publish-post>Publish</button>

@@ -75,7 +75,7 @@ function cardTemplate(post) {
     <a class="post-card" href="${postUrl(post)}">
       <article>
         <div class="post-meta">
-          <span>${formatDate(post.published_at)}</span>
+          <span>${formatDate(post.publish_at || post.published_at)}</span>
           <span>${post.reading_time_minutes || 1} min read</span>
         </div>
         ${categories ? `<div class="category-tags">${categories}</div>` : ""}
@@ -100,11 +100,13 @@ async function initPostDetail() {
   }
 
   document.title = `${post.seo_title || post.title} | Now Roaming`;
-  setMeta("description", post.meta_description || post.excerpt || "");
-  setMeta("og:title", post.seo_title || post.title, "property");
-  setMeta("og:description", post.meta_description || post.excerpt || "", "property");
-  setMeta("twitter:title", post.seo_title || post.title);
-  setMeta("twitter:description", post.meta_description || post.excerpt || "");
+  setMeta("description", post.seo_description || post.meta_description || post.excerpt || "");
+  setMeta("og:title", post.social_title || post.seo_title || post.title, "property");
+  setMeta("og:description", post.social_description || post.seo_description || post.meta_description || post.excerpt || "", "property");
+  setMeta("og:image", post.social_image_url || post.og_image_url || post.featured_image_url || "", "property");
+  setMeta("twitter:title", post.social_title || post.seo_title || post.title);
+  setMeta("twitter:description", post.social_description || post.seo_description || post.meta_description || post.excerpt || "");
+  setMeta("twitter:image", post.social_image_url || post.og_image_url || post.featured_image_url || "");
 
   const mediaMap = await signedPublishedMediaMap(post);
   const postWithMedia = applySignedMedia(post, mediaMap);
@@ -144,7 +146,7 @@ function detailTemplate(post, related) {
       <h1>${escapeHtml(post.title)}</h1>
       ${categories ? `<div class="category-tags">${categories}</div>` : ""}
       <div class="post-meta">
-        <span>${formatDate(post.published_at)}</span>
+        <span>${formatDate(post.publish_at || post.published_at)}</span>
         <span>${post.reading_time_minutes || 1} min read</span>
       </div>
       <p>${escapeHtml(post.excerpt || post.subtitle || "")}</p>
@@ -201,6 +203,7 @@ async function signedPublishedMediaMap(post) {
   const haystack = [
     post.featured_image_url,
     post.og_image_url,
+    post.social_image_url,
     post.body_html,
     JSON.stringify(post.attachments || [])
   ].filter(Boolean).join(" ");
@@ -225,6 +228,7 @@ function applySignedMedia(post, mediaMap) {
     ...post,
     featured_image_url: replace(post.featured_image_url),
     og_image_url: replace(post.og_image_url),
+    social_image_url: replace(post.social_image_url),
     body_html: replace(post.body_html),
     attachments: (post.attachments || []).map((item) => ({
       ...item,

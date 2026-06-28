@@ -20,13 +20,20 @@ create table public.posts (
   body_markdown text,
   author text not null default 'Joseph Huckabee',
   status public.post_status not null default 'draft',
+  publish_at timestamptz,
   published_at timestamptz,
   scheduled_for timestamptz,
   featured_image_url text,
   og_image_url text,
   canonical_url text,
   seo_title text,
+  seo_description text,
+  social_title text,
+  social_description text,
+  social_image_url text,
   meta_description text,
+  autosave_payload jsonb,
+  autosaved_at timestamptz,
   reading_time_minutes integer not null default 1,
   attachments jsonb not null default '[]'::jsonb,
   gallery jsonb not null default '[]'::jsonb,
@@ -190,8 +197,8 @@ left join public.post_categories pc on pc.post_id = p.id
 left join public.categories c on c.id = pc.category_id
 left join public.post_tags pt on pt.post_id = p.id
 left join public.tags t on t.id = pt.tag_id
-where p.status = 'published'
-  and p.published_at <= now()
+where p.status in ('published', 'scheduled')
+  and coalesce(p.publish_at, p.published_at) <= now()
 group by p.id;
 
 alter table public.users enable row level security;
@@ -216,7 +223,7 @@ with check (exists (select 1 from public.users u where u.id = auth.uid() and u.r
 
 create policy "Public can read published posts" on public.posts
 for select to anon, authenticated
-using (status = 'published' and published_at <= now());
+using (status in ('published', 'scheduled') and coalesce(publish_at, published_at) <= now());
 
 create policy "Admins can manage categories" on public.categories
 for all to authenticated
@@ -231,8 +238,8 @@ using (
     from public.post_categories pc
     join public.posts p on p.id = pc.post_id
     where pc.category_id = categories.id
-      and p.status = 'published'
-      and p.published_at <= now()
+      and p.status in ('published', 'scheduled')
+      and coalesce(p.publish_at, p.published_at) <= now()
   )
 );
 
@@ -249,8 +256,8 @@ using (
     from public.post_tags pt
     join public.posts p on p.id = pt.post_id
     where pt.tag_id = tags.id
-      and p.status = 'published'
-      and p.published_at <= now()
+      and p.status in ('published', 'scheduled')
+      and coalesce(p.publish_at, p.published_at) <= now()
   )
 );
 
@@ -261,7 +268,7 @@ with check (exists (select 1 from public.users u where u.id = auth.uid() and u.r
 
 create policy "Public can read post categories" on public.post_categories
 for select to anon, authenticated
-using (exists (select 1 from public.posts p where p.id = post_id and p.status = 'published' and p.published_at <= now()));
+using (exists (select 1 from public.posts p where p.id = post_id and p.status in ('published', 'scheduled') and coalesce(p.publish_at, p.published_at) <= now()));
 
 create policy "Admins can manage post tags" on public.post_tags
 for all to authenticated
@@ -270,7 +277,7 @@ with check (exists (select 1 from public.users u where u.id = auth.uid() and u.r
 
 create policy "Public can read post tags" on public.post_tags
 for select to anon, authenticated
-using (exists (select 1 from public.posts p where p.id = post_id and p.status = 'published' and p.published_at <= now()));
+using (exists (select 1 from public.posts p where p.id = post_id and p.status in ('published', 'scheduled') and coalesce(p.publish_at, p.published_at) <= now()));
 
 create policy "Admins can manage media rows" on public.media
 for all to authenticated
@@ -323,8 +330,8 @@ begin
   set is_public = exists (
     select 1
     from public.posts p
-    where p.status = 'published'
-      and p.published_at <= now()
+    where p.status in ('published', 'scheduled')
+      and coalesce(p.publish_at, p.published_at) <= now()
       and (
         p.featured_image_url = m.url
         or p.og_image_url = m.url

@@ -179,6 +179,22 @@ For an existing Supabase project that already has the earlier schema, run:
 
 This adds Markdown storage, gallery data, related post IDs, responsive media metadata, `routes`, and `checkins`, plus the RLS policies needed by the new CMS pages and public map.
 
+For the editor autosave, social SEO, and scheduled publishing improvements, also run:
+
+```sql
+-- supabase/migrations/20260628_editor_autosave_seo_schedule.sql
+```
+
+This adds `publish_at`, social share fields, `autosave_payload`, and `autosaved_at`. Public post reads now include `published` and `scheduled` posts only when `coalesce(publish_at, published_at) <= now()`.
+
+## Editor Workflow
+
+- Autosave runs every 30 seconds and when leaving the editor with unsaved changes.
+- Cmd/Ctrl + S saves; Cmd/Ctrl + Shift + P publishes.
+- Autosave keeps existing published posts safe by writing pending edits to `autosave_payload` instead of changing the live row.
+- Drag images into the editor upload area to upload them to Supabase Storage and insert them into the story.
+- Use `Use Travel Day Template` to append the reusable travel-day section structure.
+
 ## Manage The Map
 
 1. Go to `/admin/check-ins/`.
