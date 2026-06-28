@@ -6,6 +6,7 @@ const detailEl = document.querySelector("[data-post-detail]");
 const mapEl = document.querySelector("[data-world-map]");
 const homeJournalEl = document.querySelector("[data-home-journal]");
 const homePostCountEl = document.querySelector("[data-home-post-count]");
+let leaflet;
 
 if (!hasSupabaseConfig()) {
   showConfigMessage();
@@ -223,6 +224,11 @@ function detailTemplate(post, related) {
 async function initMap() {
   const card = document.querySelector("[data-map-card]");
   const timeline = document.querySelector("[data-map-timeline]");
+  const L = await loadLeaflet();
+  if (!L) {
+    mapEl.innerHTML = `<p class="admin-message">The interactive route map could not load. Please refresh the page.</p>`;
+    return;
+  }
   const { data, error } = await selectCheckIns();
   if (error) {
     mapEl.innerHTML = `<p class="admin-message">The route map is temporarily unavailable.</p>`;
@@ -237,11 +243,7 @@ async function initMap() {
     if (timeline) timeline.innerHTML = "";
     return;
   }
-  if (!window.L) {
-    mapEl.innerHTML = `<p class="admin-message">The route map could not load.</p>`;
-    return;
-  }
-  renderLeafletMap(mapEl, card, checkins);
+  renderLeafletMap(L, mapEl, card, checkins);
   if (timeline) renderCheckinTimeline(timeline, card, checkins);
 }
 
@@ -325,17 +327,34 @@ function normalizeCheckin(checkin) {
   };
 }
 
-function renderLeafletMap(container, card, checkins) {
+async function loadLeaflet() {
+  if (leaflet) return leaflet;
+  try {
+    leaflet = await import("/vendor/leaflet/leaflet-src.esm.js");
+    return leaflet;
+  } catch (error) {
+    logMapError(error);
+    return null;
+  }
+}
+
+function logMapError(error) {
+  if (["localhost", "127.0.0.1"].includes(location.hostname)) {
+    console.error("Now Roaming map error:", error);
+  }
+}
+
+function renderLeafletMap(L, container, card, checkins) {
   container.innerHTML = "";
-  const map = window.L.map(container, { scrollWheelZoom: false });
-  window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  const map = L.map(container, { scrollWheelZoom: false });
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap"
   }).addTo(map);
   const points = checkins.map((item) => [item.latitude, item.longitude]);
-  const route = window.L.polyline(points, { color: "#d3a650", weight: 3, opacity: 0.86 }).addTo(map);
+  const route = L.polyline(points, { color: "#d3a650", weight: 3, opacity: 0.86 }).addTo(map);
   checkins.forEach((checkin) => {
-    const marker = window.L.circleMarker([checkin.latitude, checkin.longitude], {
+    const marker = L.circleMarker([checkin.latitude, checkin.longitude], {
       radius: 8,
       color: "#070908",
       weight: 2,

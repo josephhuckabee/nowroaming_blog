@@ -27,7 +27,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org; media-src 'self' https://*.supabase.co; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://*.supabase.co; connect-src 'self' https://*.supabase.co https://esm.sh https://nominatim.openstreetmap.org; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org; media-src 'self' https://*.supabase.co; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://*.supabase.co; connect-src 'self' https://*.supabase.co https://esm.sh https://nominatim.openstreetmap.org; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         }
       ]
     },

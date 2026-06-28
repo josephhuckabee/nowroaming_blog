@@ -17,6 +17,7 @@ const appNodes = document.querySelectorAll(".admin-app");
 const messageEl = document.querySelector("[data-admin-message]");
 const protectedPages = new Set(["dashboard", "posts", "drafts", "editor", "media", "settings", "categories", "tags", "routes", "checkins", "account"]);
 const configProblem = supabaseKeyProblem(cmsConfig.supabaseAnonKey);
+let leaflet;
 
 hideAllAdminStates();
 
@@ -1159,6 +1160,7 @@ async function initCheckins() {
   const coverPreview = document.querySelector("[data-checkin-cover-preview]");
   const postsByTitle = new Map();
   form.visited_at.value ||= new Date().toISOString().slice(0, 10);
+  const L = await loadLeaflet();
 
   const posts = await supabase.from("posts").select("title,slug").order("updated_at", { ascending: false }).limit(200);
   document.querySelector("[data-checkin-post-options]").innerHTML = (posts.data || []).map((post) => {
@@ -1167,12 +1169,12 @@ async function initCheckins() {
   }).join("");
 
   let marker;
-  if (!window.L) {
-    setMessage("Leaflet did not load. Check the network/CSP settings.", mapMessage);
+  if (!L) {
+    setMessage("The interactive check-in map could not load. Please refresh the page.", mapMessage);
     return;
   }
-  const map = window.L.map(document.querySelector("[data-checkin-map]")).setView([20, 0], 2);
-  window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  const map = L.map(document.querySelector("[data-checkin-map]")).setView([20, 0], 2);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: "&copy; OpenStreetMap"
   }).addTo(map);
@@ -1257,7 +1259,7 @@ async function initCheckins() {
     form.latitude.value = lat.toFixed(6);
     form.longitude.value = lng.toFixed(6);
     if (marker) marker.setLatLng([lat, lng]);
-    else marker = window.L.marker([lat, lng], { draggable: true }).addTo(map);
+    else marker = L.marker([lat, lng], { draggable: true }).addTo(map);
     marker.on("dragend", () => {
       const point = marker.getLatLng();
       form.latitude.value = point.lat.toFixed(6);
@@ -1320,6 +1322,23 @@ function checkInsFrom() {
 async function detectCheckInsTable() {
   const first = await supabase.from("check_ins").select("id").limit(1);
   activeCheckInsTable = first.error ? "checkins" : "check_ins";
+}
+
+async function loadLeaflet() {
+  if (leaflet) return leaflet;
+  try {
+    leaflet = await import("/vendor/leaflet/leaflet-src.esm.js");
+    return leaflet;
+  } catch (error) {
+    logMapError(error);
+    return null;
+  }
+}
+
+function logMapError(error) {
+  if (["localhost", "127.0.0.1"].includes(location.hostname)) {
+    console.error("Now Roaming map error:", error);
+  }
 }
 
 async function saveCheckinRecord(payload, checkinId) {

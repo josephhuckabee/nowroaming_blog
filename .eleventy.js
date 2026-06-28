@@ -2,6 +2,9 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("css");
   eleventyConfig.addPassthroughCopy("images");
   eleventyConfig.addPassthroughCopy("js");
+  eleventyConfig.addPassthroughCopy({
+    "node_modules/leaflet/dist": "vendor/leaflet"
+  });
 
   eleventyConfig.addCollection("posts", function (collectionApi) {
     return collectionApi.getFilteredByGlob("posts/*.md").sort((a, b) => {

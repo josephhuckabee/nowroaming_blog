@@ -6,7 +6,7 @@ eleventyExcludeFromCollections: true
 robots: noindex, nofollow
 ---
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
 
 <main class="admin-shell" id="main-content" data-admin-page="checkins">
   <section class="admin-panel">
@@ -81,5 +81,4 @@ robots: noindex, nofollow
 <script>
   window.NOW_ROAMING_CMS = {{ cms | json | safe }};
 </script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module" src="/js/cms-admin.js"></script>
