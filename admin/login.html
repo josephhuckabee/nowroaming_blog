@@ -1,0 +1,38 @@
+---
+layout: layouts/base.njk
+title: Admin Login
+description: Log into the Now Roaming CMS.
+eleventyExcludeFromCollections: true
+robots: noindex, nofollow
+---
+
+<main class="admin-shell" id="main-content" data-admin-page="login">
+  <section class="admin-panel">
+    <div class="admin-topbar">
+      <div>
+        <p class="eyebrow">Private CMS</p>
+        <h1>Login</h1>
+      </div>
+    </div>
+
+    <form class="admin-login" data-admin-login>
+      <h2>Admin login</h2>
+      <p>Use your approved Supabase Auth admin account. Visitors never need an account to read the blog.</p>
+      <label>
+        Email
+        <input name="email" type="email" autocomplete="email" required>
+      </label>
+      <label>
+        Password
+        <input name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <button class="button" type="submit">Login</button>
+      <p class="admin-message" data-admin-message></p>
+    </form>
+  </section>
+</main>
+
+<script>
+  window.NOW_ROAMING_CMS = {{ cms | json | safe }};
+</script>
+<script type="module" src="/js/cms-admin.js"></script>

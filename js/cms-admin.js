@@ -1,3 +1,4 @@
+import DOMPurify from "https://esm.sh/dompurify@3.2.6";
 import { cmsConfig, escapeHtml, estimateReadTime, formatDate, hasSupabaseConfig, slugify, supabase } from "./supabase-client.js";
 
 const page = document.querySelector("[data-admin-page]")?.dataset.adminPage;
@@ -8,6 +9,9 @@ const messageEl = document.querySelector("[data-admin-message]");
 
 if (!hasSupabaseConfig()) {
   setMessage("Supabase is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY, then rebuild.");
+  if (!messageEl) {
+    document.querySelector(".admin-panel")?.insertAdjacentHTML("beforeend", `<p class="admin-message">Supabase is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY, then rebuild.</p>`);
+  }
 } else {
   initAuth();
 }
@@ -15,11 +19,15 @@ if (!hasSupabaseConfig()) {
 async function initAuth() {
   logoutButtons.forEach((button) => button.addEventListener("click", async () => {
     await supabase.auth.signOut();
-    location.href = "/admin/";
+    location.href = "/admin/login/";
   }));
 
   loginForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (isLoginCoolingDown()) {
+      setMessage("Too many login attempts. Please wait a minute and try again.");
+      return;
+    }
     const form = new FormData(loginForm);
     const email = String(form.get("email") || "").trim().toLowerCase();
     if (cmsConfig.adminEmail && email !== cmsConfig.adminEmail.toLowerCase()) {
@@ -31,21 +39,23 @@ async function initAuth() {
       password: String(form.get("password") || "")
     });
     if (error) {
+      recordFailedLogin();
       setMessage(error.message);
       return;
     }
+    clearFailedLogins();
     const next = new URLSearchParams(location.search).get("next");
     if (next && next.startsWith("/admin/")) {
       location.href = next;
       return;
     }
-    await revealApp();
+    location.href = "/admin/";
   });
 
   const { data } = await supabase.auth.getSession();
   if (!data.session) {
-    if (page !== "dashboard") {
-      location.href = `/admin/?next=${encodeURIComponent(location.pathname + location.search)}`;
+    if (page !== "login") {
+      location.href = `/admin/login/?next=${encodeURIComponent(location.pathname + location.search)}`;
     }
     return;
   }
@@ -55,13 +65,44 @@ async function initAuth() {
     setMessage("This signed-in user is not authorized.");
     return;
   }
+  if (page === "login") {
+    location.href = "/admin/";
+    return;
+  }
   await revealApp();
+}
+
+function failedLoginKey() {
+  return "now_roaming_failed_logins";
+}
+
+function failedLogins() {
+  try {
+    return JSON.parse(localStorage.getItem(failedLoginKey()) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function isLoginCoolingDown() {
+  const recent = failedLogins().filter((time) => Date.now() - time < 60_000);
+  return recent.length >= 5;
+}
+
+function recordFailedLogin() {
+  const recent = failedLogins().filter((time) => Date.now() - time < 60_000);
+  recent.push(Date.now());
+  localStorage.setItem(failedLoginKey(), JSON.stringify(recent));
+}
+
+function clearFailedLogins() {
+  localStorage.removeItem(failedLoginKey());
 }
 
 async function revealApp() {
   loginForm?.setAttribute("hidden", "");
   appNodes.forEach((node) => node.removeAttribute("hidden"));
-  if (page === "dashboard") await initDashboard();
+  if (page === "dashboard" || page === "posts") await initDashboard();
   if (page === "editor") await initEditor();
   if (page === "media") await initMedia();
   if (page === "settings") await initSettings();
@@ -106,7 +147,7 @@ function renderDashboard(posts, table, query, status, category, sort) {
         <span>${escapeHtml(post.status)} / edited ${formatDate(post.updated_at)}</span>
       </div>
       <div class="admin-actions">
-        <a class="button secondary" href="/admin/editor/?id=${post.id}">Edit</a>
+        <a class="button secondary" href="${editPostHref(post.id)}">Edit</a>
         <button class="button secondary" type="button" data-duplicate="${post.id}">Duplicate</button>
         <button class="button secondary" type="button" data-delete="${post.id}">Delete</button>
       </div>
@@ -117,6 +158,7 @@ function renderDashboard(posts, table, query, status, category, sort) {
     if (!confirm("Delete this post?")) return;
     const { error } = await supabase.from("posts").delete().eq("id", button.dataset.delete);
     if (error) alert(error.message);
+    await supabase.rpc("refresh_media_public_flags");
     location.reload();
   }));
 
@@ -134,14 +176,22 @@ function renderDashboard(posts, table, query, status, category, sort) {
   }));
 }
 
+function editPostHref(id) {
+  return location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? `/admin/posts/edit/?id=${id}`
+    : `/admin/posts/${id}/edit/`;
+}
+
 async function initEditor() {
   const form = document.querySelector("[data-editor-form]");
   const editor = document.querySelector("[data-rich-editor]");
   const message = document.querySelector("[data-editor-message]");
   const slugSource = document.querySelector("[data-slug-source]");
   const slugInput = document.querySelector("[data-slug-input]");
-  const postId = new URLSearchParams(location.search).get("id");
+  const postId = getEditorPostId();
   let slugTouched = Boolean(postId);
+  const deleteButton = document.querySelector("[data-delete-post]");
+  if (deleteButton && !postId) deleteButton.hidden = true;
 
   slugInput.addEventListener("input", () => slugTouched = true);
   slugSource.addEventListener("input", () => {
@@ -174,11 +224,38 @@ async function initEditor() {
       return;
     }
     await syncTaxonomy(data.id, fieldList(form.categories.value), fieldList(form.tags.value));
+    await supabase.rpc("refresh_media_public_flags");
     setMessage("Saved.", message);
-    history.replaceState(null, "", `/admin/editor/?id=${data.id}`);
+    history.replaceState(null, "", `/admin/posts/${data.id}/edit/`);
   });
 
   document.querySelector("[data-preview-post]")?.addEventListener("click", () => previewPost(form, editor));
+  document.querySelector("[data-publish-post]")?.addEventListener("click", () => {
+    form.status.value = "published";
+    if (!form.published_at.value) form.published_at.value = localDateTimeValue(new Date());
+    form.requestSubmit();
+  });
+  document.querySelector("[data-unpublish-post]")?.addEventListener("click", () => {
+    form.status.value = "draft";
+    form.published_at.value = "";
+    form.requestSubmit();
+  });
+  deleteButton?.addEventListener("click", async () => {
+    if (!postId || !confirm("Delete this post?")) return;
+    const { error } = await supabase.from("posts").delete().eq("id", postId);
+    if (error) {
+      setMessage(error.message, message);
+      return;
+    }
+    await supabase.rpc("refresh_media_public_flags");
+    location.href = "/admin/posts/";
+  });
+}
+
+function getEditorPostId() {
+  const queryId = new URLSearchParams(location.search).get("id");
+  if (queryId) return queryId;
+  return location.pathname.match(/\/admin\/posts\/([^/]+)\/edit\/?$/)?.[1] || null;
 }
 
 function insertBlock(type, editor) {
@@ -216,11 +293,11 @@ function fillEditor(form, editor, post) {
   form.categories.value = post.categories.map((item) => item.name).join(", ");
   form.tags.value = post.tags.map((item) => item.name).join(", ");
   if (post.published_at) form.published_at.value = new Date(post.published_at).toISOString().slice(0, 16);
-  editor.innerHTML = post.body_html || "";
+  editor.innerHTML = sanitizeRichText(post.body_html || "");
 }
 
 async function collectPostPayload(form, editor) {
-  const bodyHtml = editor.innerHTML.trim();
+  const bodyHtml = sanitizeRichText(editor.innerHTML.trim());
   return {
     title: form.title.value.trim(),
     slug: slugify(form.slug.value),
@@ -237,6 +314,11 @@ async function collectPostPayload(form, editor) {
     meta_description: form.meta_description.value.trim() || null,
     reading_time_minutes: estimateReadTime(bodyHtml)
   };
+}
+
+function localDateTimeValue(date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
 }
 
 async function syncTaxonomy(postId, categories, tags) {
@@ -281,7 +363,7 @@ function previewPost(form, editor) {
       <h1>${escapeHtml(form.title.value || "Untitled")}</h1>
       <p>${escapeHtml(form.excerpt.value || form.subtitle.value || "")}</p>
     </header>
-    <div class="post-body">${editor.innerHTML}</div>
+    <div class="post-body">${sanitizeRichText(editor.innerHTML)}</div>
   `;
   dialog.showModal();
   document.querySelector("[data-close-preview]").onclick = () => dialog.close();
@@ -309,11 +391,14 @@ async function initMedia() {
   render();
 
   async function uploadFiles(files) {
-    const list = [...files].filter(validFile);
+    const list = [];
+    for (const file of files) {
+      if (await validFile(file)) list.push(file);
+    }
     progress.hidden = false;
     for (let index = 0; index < list.length; index += 1) {
       const file = list[index];
-      const path = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}-${slugify(file.name)}`;
+      const path = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
       const { error } = await supabase.storage.from("media").upload(path, file, { upsert: false });
       if (error) {
         alert(error.message);
@@ -329,19 +414,38 @@ async function initMedia() {
   }
 }
 
-function validFile(file) {
+async function validFile(file) {
   const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml", "application/pdf"];
   const maxSize = 10 * 1024 * 1024;
   if (!allowed.includes(file.type) || file.size > maxSize) {
     alert(`${file.name} is not an allowed file or is over 10MB.`);
     return false;
   }
+  if (file.type === "image/svg+xml") {
+    const text = await file.text();
+    if (/<script|on\w+=|<foreignObject/i.test(text)) {
+      alert(`${file.name} contains unsafe SVG markup and was blocked.`);
+      return false;
+    }
+  }
   return true;
+}
+
+function safeFileName(name) {
+  const extension = String(name).split(".").pop().toLowerCase();
+  const base = String(name).replace(/\.[^.]+$/, "");
+  return `${slugify(base) || "upload"}.${extension}`;
 }
 
 async function loadMedia() {
   const { data } = await supabase.from("media").select("*").order("created_at", { ascending: false });
-  return data || [];
+  return Promise.all((data || []).map(async (item) => {
+    const { data: signed } = await supabase.storage.from("media").createSignedUrl(item.path, 60 * 60);
+    return {
+      ...item,
+      display_url: signed?.signedUrl || item.url
+    };
+  }));
 }
 
 function renderMedia(grid, media, query) {
@@ -349,7 +453,7 @@ function renderMedia(grid, media, query) {
   const visible = media.filter((item) => !needle || [item.name, item.path, item.mime_type].join(" ").toLowerCase().includes(needle));
   grid.innerHTML = visible.map((item) => `
     <article class="media-card">
-      ${item.mime_type === "application/pdf" ? `<iframe src="${escapeHtml(item.url)}" title="${escapeHtml(item.name)}"></iframe>` : `<img src="${escapeHtml(item.url)}" alt="" loading="lazy">`}
+      ${item.mime_type === "application/pdf" ? `<iframe src="${escapeHtml(item.display_url)}" title="${escapeHtml(item.name)}"></iframe>` : `<img src="${escapeHtml(item.display_url)}" alt="" loading="lazy">`}
       <strong>${escapeHtml(item.name)}</strong>
       <div class="admin-actions">
         <button type="button" data-copy="${escapeHtml(item.url)}">Copy URL</button>
@@ -404,4 +508,21 @@ function parseJson(value, fallback) {
     alert("One JSON field is invalid.");
     throw new Error("Invalid JSON");
   }
+}
+
+function sanitizeRichText(html) {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "a", "b", "blockquote", "br", "caption", "code", "div", "em", "figcaption", "figure", "h2", "h3", "h4",
+      "hr", "i", "iframe", "img", "li", "ol", "p", "pre", "span", "strong", "table", "tbody", "td", "th",
+      "thead", "tr", "u", "ul", "input"
+    ],
+    ALLOWED_ATTR: [
+      "allow", "allowfullscreen", "alt", "checked", "class", "colspan", "datetime", "download", "height",
+      "href", "loading", "rel", "rowspan", "src", "target", "title", "type", "width"
+    ],
+    ADD_TAGS: ["iframe"],
+    ADD_ATTR: ["allowfullscreen"],
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\/)/i
+  });
 }

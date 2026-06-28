@@ -6,7 +6,7 @@ create table public.users (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null unique,
   display_name text,
-  role text not null default 'admin' check (role in ('admin', 'author')),
+  role text not null default 'author' check (role in ('admin', 'author')),
   created_at timestamptz not null default now()
 );
 
@@ -76,6 +76,7 @@ create table public.media (
   name text not null,
   mime_type text not null,
   size_bytes bigint not null,
+  is_public boolean not null default false,
   alt_text text,
   folder text,
   uploaded_by uuid references public.users(id) on delete set null,
@@ -217,9 +218,9 @@ for all to authenticated
 using (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'))
 with check (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'));
 
-create policy "Public can read media rows" on public.media
+create policy "Public can read published media rows" on public.media
 for select to anon, authenticated
-using (true);
+using (is_public = true);
 
 create policy "Admins can manage settings" on public.settings
 for all to authenticated
@@ -234,13 +235,64 @@ insert into public.settings (id, blog_title, blog_description, author_name)
 values (1, 'Now Roaming', 'It''s good to be lost.', 'Joseph Huckabee')
 on conflict (id) do nothing;
 
+create or replace function public.refresh_media_public_flags()
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.media m
+  set is_public = exists (
+    select 1
+    from public.posts p
+    where p.status = 'published'
+      and p.published_at <= now()
+      and (
+        p.featured_image_url = m.url
+        or p.og_image_url = m.url
+        or p.body_html ilike '%' || m.url || '%'
+        or p.attachments::text ilike '%' || m.url || '%'
+      )
+  );
+$$;
+
+grant execute on function public.refresh_media_public_flags() to authenticated;
+
 -- Storage setup:
--- 1. Create a public bucket named "media" in Supabase Storage.
+-- 1. Create a bucket named "media" in Supabase Storage.
 -- 2. Add storage policies below after the bucket exists.
 
-create policy "Public can read media objects" on storage.objects
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'media',
+  'media',
+  false,
+  10485760,
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml', 'application/pdf']
+)
+on conflict (id) do update
+set public = excluded.public,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
+
+create policy "Public can read published media objects" on storage.objects
 for select to anon, authenticated
-using (bucket_id = 'media');
+using (
+  bucket_id = 'media'
+  and exists (
+    select 1
+    from public.media m
+    where m.path = storage.objects.name
+      and m.is_public = true
+  )
+);
+
+create policy "Admins can read media objects" on storage.objects
+for select to authenticated
+using (
+  bucket_id = 'media'
+  and exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin')
+);
 
 create policy "Admins can upload media objects" on storage.objects
 for insert to authenticated

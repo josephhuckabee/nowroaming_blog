@@ -1,40 +1,25 @@
 ---
 layout: layouts/base.njk
-title: Admin Dashboard
-description: Manage Now Roaming posts, media, and settings.
+title: Posts
+description: Manage Now Roaming posts.
 eleventyExcludeFromCollections: true
 robots: noindex, nofollow
 ---
 
-<main class="admin-shell" id="main-content" data-admin-page="dashboard">
+<main class="admin-shell" id="main-content" data-admin-page="posts">
   <section class="admin-panel">
     <div class="admin-topbar">
       <div>
         <p class="eyebrow">Private CMS</p>
-        <h1>Dashboard</h1>
+        <h1>Posts</h1>
       </div>
       <div class="admin-actions">
-        <a class="button secondary" href="/admin/posts/">Posts</a>
+        <a class="button secondary" href="/admin/">Dashboard</a>
         <a class="button secondary" href="/admin/media/">Media</a>
         <a class="button secondary" href="/admin/settings/">Settings</a>
         <button class="button secondary" type="button" data-admin-logout>Logout</button>
       </div>
     </div>
-
-    <form class="admin-login" data-admin-login>
-      <h2>Admin login</h2>
-      <p>Use the email address configured in <code>ADMIN_EMAIL</code>. Public registration stays disabled in Supabase.</p>
-      <label>
-        Email
-        <input name="email" type="email" autocomplete="email" required>
-      </label>
-      <label>
-        Password
-        <input name="password" type="password" autocomplete="current-password" required>
-      </label>
-      <button class="button" type="submit">Login</button>
-      <p class="admin-message" data-admin-message></p>
-    </form>
 
     <div class="admin-app" data-admin-app hidden>
       <div class="admin-toolbar">

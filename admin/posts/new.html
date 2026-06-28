@@ -1,7 +1,7 @@
 ---
 layout: layouts/base.njk
-title: Post Editor
-description: Create and edit Now Roaming posts.
+title: New Post
+description: Create a Now Roaming post.
 eleventyExcludeFromCollections: true
 robots: noindex, nofollow
 ---
@@ -11,21 +11,14 @@ robots: noindex, nofollow
     <div class="admin-topbar">
       <div>
         <p class="eyebrow">Private CMS</p>
-        <h1>Post Editor</h1>
+        <h1>New Post</h1>
       </div>
       <div class="admin-actions">
         <a class="button secondary" href="/admin/posts/">Posts</a>
+        <a class="button secondary" href="/admin/media/">Media</a>
         <button class="button secondary" type="button" data-admin-logout>Logout</button>
       </div>
     </div>
-
-    <form class="admin-login" data-admin-login>
-      <h2>Admin login</h2>
-      <label>Email <input name="email" type="email" autocomplete="email" required></label>
-      <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
-      <button class="button" type="submit">Login</button>
-      <p class="admin-message" data-admin-message></p>
-    </form>
 
     <form class="editor-layout admin-app" data-editor-form hidden>
       <div class="editor-main">
@@ -33,7 +26,6 @@ robots: noindex, nofollow
         <label>Subtitle <input name="subtitle"></label>
         <label>Slug <input name="slug" data-slug-input required></label>
         <label>Excerpt <textarea name="excerpt" rows="3"></textarea></label>
-
         <div class="editor-toolbar" aria-label="Rich text controls">
           <button type="button" data-command="formatBlock" data-value="h2">H2</button>
           <button type="button" data-command="formatBlock" data-value="h3">H3</button>
@@ -53,7 +45,6 @@ robots: noindex, nofollow
         </div>
         <div class="rich-editor post-body" data-rich-editor contenteditable="true" role="textbox" aria-multiline="true"></div>
       </div>
-
       <aside class="editor-sidebar">
         <label>Status
           <select name="status">

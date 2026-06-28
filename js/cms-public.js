@@ -1,3 +1,4 @@
+import DOMPurify from "https://esm.sh/dompurify@3.2.6";
 import { escapeHtml, formatDate, hasSupabaseConfig, postUrl, supabase } from "./supabase-client.js";
 
 const listEl = document.querySelector("[data-public-posts]");
@@ -102,8 +103,10 @@ async function initPostDetail() {
   setMeta("twitter:title", post.seo_title || post.title);
   setMeta("twitter:description", post.meta_description || post.excerpt || "");
 
-  const related = await fetchRelated(post);
-  detailEl.innerHTML = detailTemplate(post, related);
+  const mediaMap = await signedPublishedMediaMap(post);
+  const postWithMedia = applySignedMedia(post, mediaMap);
+  const related = await fetchRelated(postWithMedia);
+  detailEl.innerHTML = detailTemplate(postWithMedia, related);
 }
 
 async function fetchRelated(post) {
@@ -139,7 +142,7 @@ function detailTemplate(post, related) {
       <p>${escapeHtml(post.excerpt || post.subtitle || "")}</p>
     </header>
     ${post.featured_image_url ? `<img class="post-featured-image" src="${escapeHtml(post.featured_image_url)}" alt="" loading="eager">` : ""}
-    <div class="post-body">${post.body_html || ""}</div>
+    <div class="post-body">${sanitizeRichText(post.body_html || "")}</div>
     ${attachments ? `<div class="attachment-list">${attachments}</div>` : ""}
     ${relatedHtml}
   `;
@@ -148,4 +151,57 @@ function detailTemplate(post, related) {
 function setMeta(name, content, attr = "name") {
   const meta = document.querySelector(`meta[${attr}="${name}"]`);
   if (meta && content) meta.setAttribute("content", content);
+}
+
+async function signedPublishedMediaMap(post) {
+  const haystack = [
+    post.featured_image_url,
+    post.og_image_url,
+    post.body_html,
+    JSON.stringify(post.attachments || [])
+  ].filter(Boolean).join(" ");
+  const { data } = await supabase.from("media").select("url,path").eq("is_public", true);
+  const referenced = (data || []).filter((item) => item.url && haystack.includes(item.url));
+  const entries = await Promise.all(referenced.map(async (item) => {
+    const { data: signed } = await supabase.storage.from("media").createSignedUrl(item.path, 60 * 60);
+    return [item.url, signed?.signedUrl || item.url];
+  }));
+  return new Map(entries);
+}
+
+function applySignedMedia(post, mediaMap) {
+  const replace = (value) => {
+    let output = value || "";
+    mediaMap.forEach((signedUrl, storedUrl) => {
+      output = output.split(storedUrl).join(signedUrl);
+    });
+    return output;
+  };
+  return {
+    ...post,
+    featured_image_url: replace(post.featured_image_url),
+    og_image_url: replace(post.og_image_url),
+    body_html: replace(post.body_html),
+    attachments: (post.attachments || []).map((item) => ({
+      ...item,
+      url: replace(item.url)
+    }))
+  };
+}
+
+function sanitizeRichText(html) {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "a", "b", "blockquote", "br", "caption", "code", "div", "em", "figcaption", "figure", "h2", "h3", "h4",
+      "hr", "i", "iframe", "img", "li", "ol", "p", "pre", "span", "strong", "table", "tbody", "td", "th",
+      "thead", "tr", "u", "ul", "input"
+    ],
+    ALLOWED_ATTR: [
+      "allow", "allowfullscreen", "alt", "checked", "class", "colspan", "datetime", "download", "height",
+      "href", "loading", "rel", "rowspan", "src", "target", "title", "type", "width"
+    ],
+    ADD_TAGS: ["iframe"],
+    ADD_ATTR: ["allowfullscreen"],
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\/)/i
+  });
 }

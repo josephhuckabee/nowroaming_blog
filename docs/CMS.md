@@ -1,25 +1,35 @@
-# Now Roaming CMS
+# Now Roaming Browser CMS
 
-This project is still an Eleventy site, but content can now be managed through Supabase:
+Now Roaming is still an Eleventy site, but new blog content is managed entirely from the browser and stored in Supabase. You do not need VS Code, Markdown files, Git commits, or manual file editing to publish new posts.
 
-- Public site: `/blog/` lists published database posts.
-- Public post route: `/blog/my-post-slug` is rewritten by Vercel to `/blog/post.html`.
-- Admin dashboard: `/admin/`
-- Post editor: `/admin/editor/`
-- Media library: `/admin/media/`
-- Settings: `/admin/settings/`
+Legacy Markdown posts can stay in `posts/`. All new posts should be created in the CMS and saved to Supabase.
 
-The original Markdown posts remain available as legacy/static content. New posts should be created in the CMS.
+## Routes
 
-## New Files
+- `/admin/login/` - private CMS login
+- `/admin/` - admin dashboard
+- `/admin/posts/` - post list, search, filters, sorting
+- `/admin/posts/new/` - create a post
+- `/admin/posts/:id/edit/` - edit a post on Vercel
+- `/admin/posts/edit/?id=:id` - local Eleventy dev fallback for editing
+- `/admin/media/` - media library and uploads
+- `/admin/settings/` - blog settings
+- `/blog/` - public Supabase-backed post list
+- `/blog/:slug` - public Supabase-backed post reader on Vercel
+
+## Files Added
 
 - `.env.example`
 - `.gitignore`
 - `_data/cms.js`
 - `admin/index.html`
+- `admin/login.html`
 - `admin/editor.html`
 - `admin/media.html`
 - `admin/settings.html`
+- `admin/posts/index.html`
+- `admin/posts/new.html`
+- `admin/posts/edit.html`
 - `blog/index.html`
 - `blog/post.html`
 - `docs/CMS.md`
@@ -30,9 +40,10 @@ The original Markdown posts remain available as legacy/static content. New posts
 - `supabase/schema.sql`
 - `vercel.json`
 
-## Modified Files
+## Files Modified
 
 - `.eleventy.js`
+- `.eleventyignore`
 - `_includes/layouts/base.njk`
 - `css/styles.css`
 - `robots.txt.njk`
@@ -49,81 +60,11 @@ ADMIN_EMAIL=you@example.com
 SITE_URL=https://nowroaming.com
 ```
 
-Do not add the Supabase service role key to this project. The anon key is public by design; Row Level Security protects private actions.
+Never add the Supabase service role key to this project. The browser uses only the public anon key. Supabase Auth and Row Level Security are the security boundary.
 
-## Supabase Setup
+## Supabase Tables
 
-1. Create a Supabase project.
-2. Open SQL Editor.
-3. Run the full contents of `supabase/schema.sql`.
-4. In Storage, create a public bucket named `media`.
-5. In Authentication settings, disable public signups.
-6. Create your admin user manually in Supabase Auth.
-7. Grant that user admin access:
-
-```sql
-update public.users
-set role = 'admin'
-where email = 'you@example.com';
-```
-
-If the user row does not exist yet, sign in once or insert it manually with the auth user id.
-
-## Authentication Flow
-
-Admin pages load as static Eleventy pages. They check for an active Supabase Auth session in the browser. If there is no session, only the login form is shown.
-
-After login, the browser checks that the signed-in email matches `ADMIN_EMAIL`. Database writes are still protected by Supabase RLS, so a matching email alone is not enough; the user must also have `role = 'admin'` in `public.users`.
-
-Visitors never need accounts and can only read rows that are published and whose `published_at` date is not in the future.
-
-## Storage
-
-Uploads go to the Supabase Storage bucket named `media`. The media library accepts JPG, PNG, WEBP, GIF, SVG, and PDF files up to 10MB.
-
-The browser validates file type and size before upload. Supabase Storage policies allow public reads and admin-only writes/deletes.
-
-## Local Development
-
-```bash
-npm install
-cp .env.example .env
-npm run dev
-```
-
-Open the local URL printed by Eleventy. Rebuild after changing `.env` because the public Supabase config is injected at build time.
-
-## Deployment To Vercel
-
-1. Import the repository into Vercel.
-2. Set the build command to `npm run build`.
-3. Set the output directory to `_site`.
-4. Add the environment variables listed above.
-5. Deploy.
-
-`vercel.json` rewrites `/blog/:slug` to the static post reader and marks `/admin/*` as noindex.
-
-## Publishing Your First Article
-
-1. Visit `/admin/`.
-2. Log in with the admin email/password you created in Supabase Auth.
-3. Click `New post`.
-4. Add title, slug, excerpt, body, categories, tags, and SEO fields.
-5. Choose `Draft`, `Published`, or `Scheduled`.
-6. Use `Preview` to review the article.
-7. Click `Save`.
-8. Published posts appear on `/blog/` and at `/blog/your-slug`.
-
-## Uploading Media
-
-1. Visit `/admin/media/`.
-2. Drop files into the upload area or choose files.
-3. Copy the uploaded file URL.
-4. Paste it into the featured image field or insert it into the editor.
-
-## Complete SQL Schema
-
-The complete schema is maintained in `supabase/schema.sql`. It includes:
+The schema in `supabase/schema.sql` creates:
 
 - `users`
 - `posts`
@@ -134,11 +75,144 @@ The complete schema is maintained in `supabase/schema.sql`. It includes:
 - `media`
 - `settings`
 - `published_posts` view
-- RLS policies
-- Storage object policies
 
-## Notes And Future Extensions
+It also creates `refresh_media_public_flags()`, which marks uploaded media public only when referenced by a currently published post.
 
-The schema is intentionally normalized and can later support projects, travel journal entries, galleries, case studies, newsletter subscribers, comments, and multiple authors without replacing the current CMS shell.
+## Supabase Storage
 
-For stronger image resizing, add a Vercel image proxy or Supabase Edge Function later. The current implementation preserves aspect ratio, lazy loads images, and stores clean public URLs.
+The schema creates or updates one bucket:
+
+- `media`
+
+Allowed file types:
+
+- JPG
+- PNG
+- WEBP
+- GIF
+- SVG, with browser-side unsafe markup checks
+- PDF
+
+Max file size is 10MB. Admins can upload and delete. The bucket is private; public pages request signed URLs only for media rows marked `is_public = true`.
+
+## RLS Policies
+
+The schema enables Row Level Security on all CMS tables.
+
+Added policies include:
+
+- Admins can manage posts, categories, tags, join tables, media rows, and settings.
+- Public users can read only posts with `status = 'published'` and `published_at <= now()`.
+- Drafts, unpublished posts, and scheduled posts are hidden from anonymous users.
+- Public users can read category/tag join rows only for published posts.
+- Public users can read media rows only when `media.is_public = true`.
+- Storage uploads, updates, and deletes require an authenticated admin.
+
+## Authentication Flow
+
+1. Visit `/admin/login/`.
+2. Log in with the approved Supabase Auth account.
+3. The browser checks that the email matches `ADMIN_EMAIL`.
+4. Supabase RLS checks that the authenticated user has `role = 'admin'` in `public.users`.
+5. Unauthenticated visitors are redirected from admin pages to `/admin/login/`.
+
+The static admin HTML can technically be downloaded, because this is an Eleventy static deployment. It does not expose drafts or allow writes. Draft reads and all admin writes are blocked by Supabase Auth and RLS unless the user is an approved admin.
+
+## Create The First Admin User
+
+1. In Supabase Dashboard, disable public signups under Authentication settings.
+2. Create a user manually in Authentication.
+3. Run:
+
+```sql
+update public.users
+set role = 'admin'
+where email = 'you@example.com';
+```
+
+If the `public.users` row does not exist yet, sign in once from `/admin/login/`, then run the update.
+
+## Write And Publish A Post
+
+1. Go to `/admin/login/`.
+2. Log in.
+3. Open `/admin/posts/`.
+4. Click `New post`.
+5. Write in the browser editor.
+6. Add title, slug, excerpt, categories, tags, and SEO fields.
+7. Use `Preview` for a draft preview.
+8. Click `Save` to keep it as a draft.
+9. Click `Publish` to publish.
+10. Published posts appear on `/blog/` and `/blog/your-slug`.
+
+Use `Unpublish` to return a post to draft status. Use `Delete` to remove it.
+
+## Upload Media
+
+1. Go to `/admin/media/`.
+2. Drop files into the upload area or choose files.
+3. Copy the uploaded URL.
+4. Paste it into the featured image field or insert it into the editor.
+5. Publish the post that references the media.
+
+Media is reusable across posts.
+
+## Local Development
+
+```bash
+npm install
+cp .env.example .env
+npm run dev
+```
+
+Eleventy does not apply Vercel rewrites locally, so edit links use `/admin/posts/edit/?id=:id` during local development. Production uses `/admin/posts/:id/edit/`.
+
+## Vercel Deployment
+
+1. Push the code to GitHub.
+2. Import the repository in Vercel.
+3. Build command: `npm run build`
+4. Output directory: `_site`
+5. Add all environment variables listed above.
+6. Deploy.
+
+`vercel.json` adds:
+
+- `/blog/:slug` rewrite to `/blog/post.html`
+- `/admin/posts/:id/edit` rewrite to `/admin/posts/edit.html`
+- `X-Robots-Tag: noindex, nofollow` for admin routes
+- CSP, referrer, permissions, and content-type headers
+
+## Security Checks
+
+Test public draft protection:
+
+1. Create a draft post.
+2. Open a private browser window.
+3. Visit `/blog/`.
+4. Confirm the draft does not appear.
+5. Visit `/blog/draft-slug`.
+6. Confirm it shows not found.
+
+Test admin protection:
+
+1. Sign out.
+2. Visit `/admin/posts/`.
+3. Confirm you are redirected to `/admin/login/`.
+4. Try the Supabase REST endpoint for `posts` without a session.
+5. Confirm draft rows are not returned.
+
+Test write protection:
+
+1. Use a non-admin Supabase Auth user.
+2. Log in.
+3. Confirm post writes fail because RLS requires `public.users.role = 'admin'`.
+
+## Security Notes
+
+- No service role key is used in browser code.
+- SQL injection protection is handled by Supabase client parameterization and RLS.
+- Rich text is sanitized with DOMPurify before saving and before public rendering.
+- SVG uploads are blocked if they contain scripts, event handlers, or `foreignObject`.
+- Login retry cooldown is implemented in the browser; configure Supabase Auth rate limits for the authoritative throttle.
+- CSRF risk is low because admin writes use bearer-token authenticated Supabase requests instead of cookie-authenticated form posts.
