@@ -12,7 +12,7 @@
   {% if keywords %}
     <meta name="keywords" content="{% if keywords.length and keywords is not string %}{{ keywords | join(', ') }}{% else %}{{ keywords }}{% endif %}">
   {% endif %}
-  <meta name="robots" content="index, follow">
+  <meta name="robots" content="{{ robots or 'index, follow' }}">
   <link rel="canonical" href="{{ canonicalUrl }}">
   <meta property="og:site_name" content="{{ site.name }}">
   <meta property="og:title" content="{{ pageTitle | trim }}">
@@ -56,6 +56,7 @@
       </button>
       <div class="nav-links" id="nav-links">
         <a href="/#journal">Journal</a>
+        <a href="/blog/">All Posts</a>
         <a href="/#routes">Routes</a>
         <a href="/#notes">Field Notes</a>
         <a href="/#subscribe">Subscribe</a>

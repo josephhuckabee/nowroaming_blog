@@ -1,0 +1,94 @@
+---
+layout: layouts/base.njk
+title: Post Editor
+description: Create and edit Now Roaming posts.
+eleventyExcludeFromCollections: true
+robots: noindex, nofollow
+---
+
+<main class="admin-shell" id="main-content" data-admin-page="editor">
+  <section class="admin-panel">
+    <div class="admin-topbar">
+      <div>
+        <p class="eyebrow">Private CMS</p>
+        <h1>Post Editor</h1>
+      </div>
+      <div class="admin-actions">
+        <a class="button secondary" href="/admin/">Dashboard</a>
+        <button class="button secondary" type="button" data-admin-logout>Logout</button>
+      </div>
+    </div>
+
+    <form class="admin-login" data-admin-login>
+      <h2>Admin login</h2>
+      <label>Email <input name="email" type="email" autocomplete="email" required></label>
+      <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="button" type="submit">Login</button>
+      <p class="admin-message" data-admin-message></p>
+    </form>
+
+    <form class="editor-layout admin-app" data-editor-form hidden>
+      <div class="editor-main">
+        <label>Title <input name="title" data-slug-source required></label>
+        <label>Subtitle <input name="subtitle"></label>
+        <label>Slug <input name="slug" data-slug-input required></label>
+        <label>Excerpt <textarea name="excerpt" rows="3"></textarea></label>
+
+        <div class="editor-toolbar" aria-label="Rich text controls">
+          <button type="button" data-command="formatBlock" data-value="h2">H2</button>
+          <button type="button" data-command="formatBlock" data-value="h3">H3</button>
+          <button type="button" data-command="bold">B</button>
+          <button type="button" data-command="italic">I</button>
+          <button type="button" data-command="underline">U</button>
+          <button type="button" data-command="createLink">Link</button>
+          <button type="button" data-command="formatBlock" data-value="blockquote">Quote</button>
+          <button type="button" data-command="insertUnorderedList">List</button>
+          <button type="button" data-command="insertOrderedList">1.</button>
+          <button type="button" data-insert="checklist">Checklist</button>
+          <button type="button" data-command="formatBlock" data-value="pre">Code</button>
+          <button type="button" data-insert="table">Table</button>
+          <button type="button" data-insert="hr">Divider</button>
+          <button type="button" data-insert="youtube">YouTube</button>
+          <button type="button" data-insert="image">Image</button>
+        </div>
+        <div class="rich-editor post-body" data-rich-editor contenteditable="true" role="textbox" aria-multiline="true"></div>
+      </div>
+
+      <aside class="editor-sidebar">
+        <label>Status
+          <select name="status">
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+            <option value="scheduled">Scheduled</option>
+          </select>
+        </label>
+        <label>Publish date <input name="published_at" type="datetime-local"></label>
+        <label>Author <input name="author" value="Joseph Huckabee"></label>
+        <label>Featured image URL <input name="featured_image_url" type="url"></label>
+        <label>Open Graph image URL <input name="og_image_url" type="url"></label>
+        <label>Canonical URL <input name="canonical_url" type="url"></label>
+        <label>Categories <input name="categories" placeholder="Travel, Seoul"></label>
+        <label>Tags <input name="tags" placeholder="food, arrival, budget"></label>
+        <label>SEO title <input name="seo_title"></label>
+        <label>Meta description <textarea name="meta_description" rows="4"></textarea></label>
+        <div class="admin-actions stacked">
+          <button class="button" type="submit">Save</button>
+          <button class="button secondary" type="button" data-preview-post>Preview</button>
+        </div>
+        <p class="admin-message" data-editor-message></p>
+      </aside>
+    </form>
+  </section>
+</main>
+
+<dialog class="preview-dialog" data-preview-dialog>
+  <article class="post-article">
+    <button class="button secondary" type="button" data-close-preview>Close</button>
+    <div data-preview-content></div>
+  </article>
+</dialog>
+
+<script>
+  window.NOW_ROAMING_CMS = {{ cms | json | safe }};
+</script>
+<script type="module" src="/js/cms-admin.js"></script>

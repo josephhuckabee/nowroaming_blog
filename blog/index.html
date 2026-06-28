@@ -1,0 +1,37 @@
+---
+layout: layouts/base.njk
+title: Journal
+description: Browse published Now Roaming posts.
+eleventyExcludeFromCollections: true
+---
+
+<main id="main-content">
+  <section class="cms-blog">
+    <div class="section-inner">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Journal</p>
+          <h1>Published Posts</h1>
+        </div>
+        <p>Search the road notes by title, body, category, or tag.</p>
+      </div>
+
+      <div class="blog-controls">
+        <input data-public-search type="search" placeholder="Search posts" aria-label="Search posts">
+        <select data-public-category aria-label="Filter by category">
+          <option value="">All categories</option>
+        </select>
+        <select data-public-tag aria-label="Filter by tag">
+          <option value="">All tags</option>
+        </select>
+      </div>
+
+      <div class="post-list cms-post-list" data-public-posts></div>
+    </div>
+  </section>
+</main>
+
+<script>
+  window.NOW_ROAMING_CMS = {{ cms | json | safe }};
+</script>
+<script type="module" src="/js/cms-public.js"></script>

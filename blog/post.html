@@ -1,0 +1,20 @@
+---
+layout: layouts/base.njk
+title: Journal Post
+description: Read a Now Roaming post.
+eleventyExcludeFromCollections: true
+---
+
+<main class="post-page" id="main-content">
+  <article class="post-article" data-post-detail>
+    <header class="post-hero">
+      <p class="eyebrow">Journal</p>
+      <h1>Loading</h1>
+    </header>
+  </article>
+</main>
+
+<script>
+  window.NOW_ROAMING_CMS = {{ cms | json | safe }};
+</script>
+<script type="module" src="/js/cms-public.js"></script>

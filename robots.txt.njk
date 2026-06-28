@@ -4,5 +4,7 @@ eleventyExcludeFromCollections: true
 ---
 User-agent: *
 Allow: /
+Disallow: /admin/
 
 Sitemap: {{ "/sitemap.xml" | absoluteUrl(site.url) }}
+Sitemap: {{ "/rss.xml" | absoluteUrl(site.url) }}
