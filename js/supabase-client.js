@@ -77,5 +77,11 @@ export function postUrl(post) {
   return `/blog/${encodeURIComponent(post.slug)}`;
 }
 export const supabase = hasSupabaseConfig()
-  ? createClient(cmsConfig.supabaseUrl, cmsConfig.supabaseAnonKey)
+  ? createClient(cmsConfig.supabaseUrl, cmsConfig.supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    })
   : null;

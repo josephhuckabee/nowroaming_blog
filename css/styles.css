@@ -151,6 +151,58 @@ textarea:focus-visible,
   color: var(--gold);
 }
 
+.admin-nav-menu {
+  position: relative;
+}
+
+.admin-nav-menu summary {
+  list-style: none;
+  cursor: pointer;
+  transition: color 180ms ease;
+}
+
+.admin-nav-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-nav-menu summary:hover {
+  color: var(--gold);
+}
+
+.admin-nav-menu div {
+  position: absolute;
+  top: calc(100% + 18px);
+  right: 0;
+  z-index: 40;
+  display: grid;
+  min-width: 230px;
+  border: 1px solid var(--line);
+  background: rgba(7, 9, 8, 0.98);
+  box-shadow: 0 18px 50px var(--shadow);
+}
+
+.admin-nav-menu div a,
+.admin-nav-menu div button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  padding: 14px 16px;
+  font: inherit;
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.admin-nav-menu div a:hover,
+.admin-nav-menu div button:hover {
+  color: var(--gold);
+}
+
 .menu-button {
   display: none;
   width: 42px;
@@ -1384,6 +1436,21 @@ section {
   .nav-links a {
     padding: 18px;
     border-bottom: 1px solid var(--line);
+  }
+
+  .admin-nav-menu {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .admin-nav-menu summary {
+    padding: 18px;
+  }
+
+  .admin-nav-menu div {
+    position: static;
+    min-width: 0;
+    border-width: 1px 0 0;
+    box-shadow: none;
   }
 
   .hero {

@@ -65,7 +65,6 @@ robots: noindex, nofollow
         <input name="social_image_url" type="hidden">
         <input name="gallery" type="hidden" value="[]">
         <input name="attachments" type="hidden" value="[]">
-        <input name="related_post_ids" type="hidden">
         <input name="canonical_url" type="hidden">
         <input name="seo_title" type="hidden">
         <input name="seo_description" type="hidden">
@@ -75,7 +74,6 @@ robots: noindex, nofollow
         <label>Status
           <span class="editor-soft-status" data-current-post-status>Draft</span>
         </label>
-        <label>Author <input name="author" value="Joseph Huckabee"></label>
         <div class="asset-picker" data-asset-picker="featured_image_url">
           <strong>Cover image</strong>
           <div data-asset-preview></div>
@@ -84,16 +82,10 @@ robots: noindex, nofollow
           <p class="admin-message" data-asset-message></p>
         </div>
         <div class="asset-picker" data-gallery-picker>
-          <strong>Gallery</strong>
-          <input type="file" data-gallery-files accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" multiple>
-          <button type="button" data-gallery-button>Add gallery images</button>
+          <strong>Gallery and media</strong>
+          <input type="file" data-gallery-files accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,application/pdf" multiple>
+          <button type="button" data-gallery-button>Add media</button>
           <div class="asset-list" data-gallery-list></div>
-        </div>
-        <div class="asset-picker" data-pdf-picker>
-          <strong>PDFs</strong>
-          <input type="file" data-pdf-files accept="application/pdf" multiple>
-          <button type="button" data-pdf-button>Add PDFs</button>
-          <div class="asset-list" data-pdf-list></div>
         </div>
         <label>Categories <input name="categories" list="category-options" placeholder="Start typing a category"></label>
         <datalist id="category-options" data-category-options></datalist>
@@ -111,23 +103,6 @@ robots: noindex, nofollow
             <p data-preview-social-description>Social description preview.</p>
           </div>
         </div>
-        <details class="advanced-panel">
-          <summary>Edit SEO and advanced settings</summary>
-          <label>Slug override <input name="slug_override" data-slug-override></label>
-          <label>Canonical URL <input name="canonical_override" type="url"></label>
-          <label>SEO title <input name="seo_title_override"></label>
-          <label>SEO description <textarea name="seo_description_override" rows="3"></textarea></label>
-          <label>Social title <input name="social_title_override"></label>
-          <label>Social description <textarea name="social_description_override" rows="3"></textarea></label>
-          <div class="asset-picker" data-asset-picker="social_image_url">
-            <strong>Social image</strong>
-            <div data-asset-preview></div>
-            <input type="file" data-asset-file accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml">
-            <button type="button" data-asset-button>Upload social image</button>
-            <p class="admin-message" data-asset-message></p>
-          </div>
-          <label>Schedule publish <input name="scheduled_publish_at" type="datetime-local"></label>
-        </details>
         <div class="admin-actions stacked">
           <button class="button" type="submit">Save draft</button>
           <button class="button secondary" type="button" data-publish-post>Publish</button>

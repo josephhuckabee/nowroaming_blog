@@ -15,7 +15,7 @@ const loginForm = document.querySelector("[data-admin-login]");
 const logoutButtons = document.querySelectorAll("[data-admin-logout]");
 const appNodes = document.querySelectorAll(".admin-app");
 const messageEl = document.querySelector("[data-admin-message]");
-const protectedPages = new Set(["dashboard", "posts", "drafts", "editor", "media", "settings", "categories", "tags", "routes", "checkins"]);
+const protectedPages = new Set(["dashboard", "posts", "drafts", "editor", "media", "settings", "categories", "tags", "routes", "checkins", "account"]);
 const configProblem = supabaseKeyProblem(cmsConfig.supabaseAnonKey);
 
 hideAllAdminStates();
@@ -74,7 +74,6 @@ async function initAuth() {
     }
     const admin = await verifyAdmin(data.session);
     if (!admin.ok) {
-      await supabase.auth.signOut();
       recordFailedLogin();
       submit.disabled = false;
       setMessage(admin.message);
@@ -98,7 +97,6 @@ async function initAuth() {
 
   const admin = await verifyAdmin(data.session);
   if (!admin.ok) {
-    await supabase.auth.signOut();
     if (page === "login") {
       loginForm?.removeAttribute("hidden");
       setMessage(admin.message);
@@ -138,6 +136,7 @@ async function revealApp() {
   if (page === "tags") await initTerms("tags");
   if (page === "routes") await initSimpleManager("routes", routeFields());
   if (page === "checkins") await initCheckins();
+  if (page === "account") await initAccount();
 }
 
 function setMessage(value, target = messageEl) {
@@ -360,10 +359,7 @@ async function initEditor() {
       payload.publish_at = null;
       payload.scheduled_for = null;
     }
-    const request = postId
-      ? supabase.from("posts").update(payload).eq("id", postId).select().single()
-      : supabase.from("posts").insert(payload).select().single();
-    const { data, error } = await request;
+    const { data, error } = await savePostRecord(payload, postId);
     saving = false;
     if (error) {
       setSaveStatus(autosave ? "Autosave failed" : "Unsaved changes");
@@ -440,6 +436,28 @@ async function initEditor() {
       }
     });
   }
+}
+
+async function savePostRecord(payload, postId) {
+  const safePayload = { ...payload };
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const request = postId
+      ? supabase.from("posts").update(safePayload).eq("id", postId).select().single()
+      : supabase.from("posts").insert(safePayload).select().single();
+    const result = await request;
+    if (!result.error) return result;
+    const missing = missingColumnName(result.error.message);
+    if (!missing || !(missing in safePayload)) return result;
+    delete safePayload[missing];
+  }
+  return { data: null, error: new Error("Post save failed after removing unsupported columns.") };
+}
+
+function missingColumnName(message) {
+  return String(message || "").match(/'([^']+)' column/)?.[1] ||
+    String(message || "").match(/column "([^"]+)"/)?.[1] ||
+    String(message || "").match(/Could not find the '([^']+)'/)?.[1] ||
+    "";
 }
 
 function getEditorPostId() {
@@ -573,7 +591,6 @@ function fillEditor(form, editor, post) {
   form.tags.value = post.tags.map((item) => item.name).join(", ");
   form.gallery.value = JSON.stringify(post.gallery || [], null, 2);
   form.attachments.value = JSON.stringify(post.attachments || [], null, 2);
-  form.related_post_ids.value = (post.related_post_ids || []).join(", ");
   if (post.publish_at || post.published_at) form.published_at.value = new Date(post.publish_at || post.published_at).toISOString().slice(0, 16);
   if (form.slug_override) form.slug_override.value = post.slug || "";
   if (form.canonical_override) form.canonical_override.value = post.canonical_url || "";
@@ -609,7 +626,7 @@ function collectPostPayload(form, editor) {
     subtitle: form.subtitle.value.trim() || null,
     excerpt: form.excerpt.value.trim() || null,
     body_html: bodyHtml,
-    author: form.author.value.trim() || "Joseph Huckabee",
+    author: "Joseph Huckabee",
     status,
     published_at: status === "draft" ? null : form.published_at.value || null,
     publish_at: status === "draft" ? null : scheduledAt || form.published_at.value || null,
@@ -625,7 +642,7 @@ function collectPostPayload(form, editor) {
     meta_description: form.meta_description.value.trim() || null,
     attachments: parseJsonField(form.attachments.value, []),
     gallery: parseJsonField(form.gallery.value, []),
-    related_post_ids: fieldList(form.related_post_ids.value),
+    related_post_ids: [],
     reading_time_minutes: estimateReadTime(bodyHtml)
   };
 }
@@ -699,33 +716,19 @@ function setupEditorAssets(form, markDirty) {
   const galleryInput = document.querySelector("[data-gallery-files]");
   document.querySelector("[data-gallery-button]")?.addEventListener("click", () => galleryInput?.click());
   galleryInput?.addEventListener("change", async () => {
-    const current = parseJsonField(form.gallery.value, []);
+    const gallery = parseJsonField(form.gallery.value, []);
+    const attachments = parseJsonField(form.attachments.value, []);
     for (const file of galleryInput.files) {
-      const { data, error } = await uploadMediaFile(file, "gallery");
+      const { data, error } = await uploadMediaFile(file, file.type === "application/pdf" ? "pdfs" : "gallery");
       if (error) {
         alert(error.message);
         continue;
       }
-      current.push({ url: data.url, caption: "" });
+      if (file.type === "application/pdf") attachments.push({ url: data.url, name: file.name });
+      else gallery.push({ url: data.url, caption: "" });
     }
-    form.gallery.value = JSON.stringify(current);
-    renderAssetPreviews(form);
-    markDirty();
-  });
-
-  const pdfInput = document.querySelector("[data-pdf-files]");
-  document.querySelector("[data-pdf-button]")?.addEventListener("click", () => pdfInput?.click());
-  pdfInput?.addEventListener("change", async () => {
-    const current = parseJsonField(form.attachments.value, []);
-    for (const file of pdfInput.files) {
-      const { data, error } = await uploadMediaFile(file, "pdfs");
-      if (error) {
-        alert(error.message);
-        continue;
-      }
-      current.push({ url: data.url, name: file.name });
-    }
-    form.attachments.value = JSON.stringify(current);
+    form.gallery.value = JSON.stringify(gallery);
+    form.attachments.value = JSON.stringify(attachments);
     renderAssetPreviews(form);
     markDirty();
   });
@@ -741,13 +744,11 @@ function renderAssetPreviews(form) {
   });
   const galleryList = document.querySelector("[data-gallery-list]");
   if (galleryList) {
-    const items = parseJsonField(form.gallery.value, []);
-    galleryList.innerHTML = items.length ? items.map((item) => `<span>${escapeHtml(item.caption || "Gallery image")}</span>`).join("") : `<span>No gallery images yet</span>`;
-  }
-  const pdfList = document.querySelector("[data-pdf-list]");
-  if (pdfList) {
-    const items = parseJsonField(form.attachments.value, []);
-    pdfList.innerHTML = items.length ? items.map((item) => `<span>${escapeHtml(item.name || "PDF")}</span>`).join("") : `<span>No PDFs yet</span>`;
+    const items = [
+      ...parseJsonField(form.gallery.value, []).map((item) => item.caption || "Gallery image"),
+      ...parseJsonField(form.attachments.value, []).map((item) => item.name || "PDF")
+    ];
+    galleryList.innerHTML = items.length ? items.map((item) => `<span>${escapeHtml(item)}</span>`).join("") : `<span>No media yet</span>`;
   }
 }
 
@@ -765,7 +766,7 @@ function previewPost(form, editor) {
   const html = editor.innerHTML;
   content.innerHTML = `
     <header class="post-hero">
-      <p class="eyebrow">${escapeHtml(form.author.value || "Journal")}</p>
+      <p class="eyebrow">Journal</p>
       <h1>${escapeHtml(form.title.value || "Untitled")}</h1>
       <p>${escapeHtml(form.excerpt.value || form.subtitle.value || "")}</p>
     </header>
@@ -989,6 +990,26 @@ async function initSettings() {
     };
     const { error } = await supabase.from("settings").upsert(payload);
     setMessage(error ? error.message : "Settings saved.", message);
+  });
+}
+
+async function initAccount() {
+  const form = document.querySelector("[data-account-form]");
+  const message = document.querySelector("[data-account-message]");
+  const { data } = await supabase.auth.getUser();
+  if (data.user) form.email.value = data.user.email || "";
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (form.password.value !== form.confirm_password.value) {
+      setMessage("Passwords do not match.", message);
+      return;
+    }
+    const { error } = await supabase.auth.updateUser({ password: form.password.value });
+    setMessage(error ? error.message : "Password updated.", message);
+    if (!error) {
+      form.password.value = "";
+      form.confirm_password.value = "";
+    }
   });
 }
 

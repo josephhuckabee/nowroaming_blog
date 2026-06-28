@@ -55,12 +55,22 @@
         <span aria-hidden="true"></span>
       </button>
       <div class="nav-links" id="nav-links">
-        <a href="/#journal">Journal</a>
-        <a href="/blog/">All Posts</a>
-        <a href="/#routes">Routes</a>
-        <a href="/map/">Map</a>
+        <a href="/blog/">Journal</a>
+        <a href="/map/">Routes</a>
         <a href="/#notes">Field Notes</a>
         <a href="/#subscribe">Subscribe</a>
+        <details class="admin-nav-menu" data-admin-nav hidden>
+          <summary>Admin</summary>
+          <div>
+            <a href="/admin/">CMS Dashboard</a>
+            <a href="/admin/posts/">Posts / Journal</a>
+            <a href="/admin/media/">Media</a>
+            <a href="/admin/settings/">Settings</a>
+            <a href="/admin/check-ins/">Check-ins / Routes</a>
+            <a href="/admin/account/">Account</a>
+            <button type="button" data-global-admin-logout>Logout</button>
+          </div>
+        </details>
       </div>
     </nav>
   </header>
@@ -75,6 +85,10 @@
     </div>
   </footer>
 
+  <script>
+    window.NOW_ROAMING_CMS = {{ cms | json | safe }};
+  </script>
   <script src="/js/script.js" defer></script>
+  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>
