@@ -15,13 +15,18 @@ robots: noindex, nofollow
       </div>
       <div class="admin-actions">
         <a class="button secondary" href="/admin/posts/">Posts</a>
+        <a class="button secondary" href="/admin/drafts/">Drafts</a>
+        <a class="button secondary" href="/admin/categories/">Categories</a>
+        <a class="button secondary" href="/admin/tags/">Tags</a>
         <a class="button secondary" href="/admin/media/">Media</a>
+        <a class="button secondary" href="/admin/routes/">Routes</a>
+        <a class="button secondary" href="/admin/check-ins/">Check-ins</a>
         <a class="button secondary" href="/admin/settings/">Settings</a>
         <button class="button secondary" type="button" data-admin-logout>Logout</button>
       </div>
     </div>
 
-    <form class="admin-login" data-admin-login>
+    <form class="admin-login" data-admin-login hidden>
       <h2>Admin login</h2>
       <p>Use the email address configured in <code>ADMIN_EMAIL</code>. Public registration stays disabled in Supabase.</p>
       <label>

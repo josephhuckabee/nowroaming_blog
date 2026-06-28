@@ -1,0 +1,39 @@
+---
+layout: layouts/base.njk
+title: Tags
+description: Manage Now Roaming tags.
+eleventyExcludeFromCollections: true
+robots: noindex, nofollow
+---
+
+<main class="admin-shell" id="main-content" data-admin-page="tags">
+  <section class="admin-panel">
+    <div class="admin-topbar">
+      <div>
+        <p class="eyebrow">Private CMS</p>
+        <h1>Tags</h1>
+      </div>
+      <div class="admin-actions">
+        <a class="button secondary" href="/admin/posts/">Posts</a>
+        <a class="button secondary" href="/admin/categories/">Categories</a>
+        <button class="button secondary" type="button" data-admin-logout>Logout</button>
+      </div>
+    </div>
+
+    <div class="admin-app manager-grid" hidden>
+      <form class="settings-grid" data-term-form>
+        <input type="hidden" name="id">
+        <label>Name <input name="name" required></label>
+        <label>Slug <input name="slug" required></label>
+        <button class="button" type="submit">Save tag</button>
+        <p class="admin-message" data-term-message></p>
+      </form>
+      <div class="admin-table" data-term-list></div>
+    </div>
+  </section>
+</main>
+
+<script>
+  window.NOW_ROAMING_CMS = {{ cms | json | safe }};
+</script>
+<script type="module" src="/js/cms-admin.js"></script>

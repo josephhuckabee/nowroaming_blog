@@ -1,44 +1,36 @@
 ---
 layout: layouts/base.njk
-title: Posts
-description: Manage Now Roaming posts.
+title: Drafts
+description: Manage draft Now Roaming posts.
 eleventyExcludeFromCollections: true
 robots: noindex, nofollow
 ---
 
-<main class="admin-shell" id="main-content" data-admin-page="posts">
+<main class="admin-shell" id="main-content" data-admin-page="drafts">
   <section class="admin-panel">
     <div class="admin-topbar">
       <div>
         <p class="eyebrow">Private CMS</p>
-        <h1>Posts</h1>
+        <h1>Drafts</h1>
       </div>
       <div class="admin-actions">
-        <a class="button secondary" href="/admin/">Dashboard</a>
-        <a class="button secondary" href="/admin/drafts/">Drafts</a>
-        <a class="button secondary" href="/admin/categories/">Categories</a>
-        <a class="button secondary" href="/admin/tags/">Tags</a>
+        <a class="button secondary" href="/admin/posts/">Posts</a>
         <a class="button secondary" href="/admin/media/">Media</a>
-        <a class="button secondary" href="/admin/check-ins/">Check-ins</a>
-        <a class="button secondary" href="/admin/settings/">Settings</a>
         <button class="button secondary" type="button" data-admin-logout>Logout</button>
       </div>
     </div>
 
-    <div class="admin-app" data-admin-app hidden>
+    <div class="admin-app" hidden>
       <div class="admin-toolbar">
         <a class="button" href="/admin/posts/new/">New post</a>
-        <input data-post-search type="search" placeholder="Search posts" aria-label="Search posts">
+        <input data-post-search type="search" placeholder="Search drafts" aria-label="Search drafts">
         <select data-post-status aria-label="Filter by status">
-          <option value="">All statuses</option>
           <option value="draft">Drafts</option>
-          <option value="published">Published</option>
-          <option value="scheduled">Scheduled</option>
         </select>
         <select data-post-category aria-label="Filter by category">
           <option value="">All categories</option>
         </select>
-        <select data-post-sort aria-label="Sort posts">
+        <select data-post-sort aria-label="Sort drafts">
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
         </select>

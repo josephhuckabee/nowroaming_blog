@@ -3,6 +3,7 @@ import { cmsConfig, escapeHtml, formatDate, hasSupabaseConfig, postUrl, supabase
 
 const listEl = document.querySelector("[data-public-posts]");
 const detailEl = document.querySelector("[data-post-detail]");
+const mapEl = document.querySelector("[data-world-map]");
 
 if (!hasSupabaseConfig()) {
   showConfigMessage();
@@ -10,10 +11,12 @@ if (!hasSupabaseConfig()) {
   initPublicList();
 } else if (detailEl) {
   initPostDetail();
+} else if (mapEl) {
+  initMap();
 }
 
 function showConfigMessage() {
-  const target = listEl || detailEl;
+  const target = listEl || detailEl || mapEl;
   if (target) {
     target.innerHTML = `<p class="admin-message">${escapeHtml(supabaseKeyProblem(cmsConfig.supabaseAnonKey) || "Supabase is not configured yet. Add SUPABASE_URL and SUPABASE_ANON_KEY, then rebuild.")}</p>`;
   }
@@ -110,6 +113,10 @@ async function initPostDetail() {
 }
 
 async function fetchRelated(post) {
+  if ((post.related_post_ids || []).length) {
+    const { data } = await supabase.from("published_posts").select("*").in("id", post.related_post_ids).limit(3);
+    if ((data || []).length) return data;
+  }
   const tagSlugs = (post.tags || []).map((tag) => tag.slug);
   const categorySlugs = (post.categories || []).map((category) => category.slug);
   const { data } = await supabase.from("published_posts").select("*").neq("id", post.id).limit(6);
@@ -124,6 +131,7 @@ async function fetchRelated(post) {
 function detailTemplate(post, related) {
   const categories = (post.categories || []).map((category) => `<span>${escapeHtml(category.name)}</span>`).join("");
   const attachments = (post.attachments || []).map((file) => `<a class="button secondary" href="${escapeHtml(file.url)}" download>${escapeHtml(file.name || "Download")}</a>`).join("");
+  const gallery = (post.gallery || []).length ? `<div class="image-gallery">${post.gallery.map((item) => `<figure><img src="${escapeHtml(item.url)}" alt="${escapeHtml(item.alt || "")}" loading="lazy"><figcaption>${escapeHtml(item.caption || "")}</figcaption></figure>`).join("")}</div>` : "";
   const relatedHtml = related.length ? `
     <section class="related-posts">
       <h2>Related posts</h2>
@@ -143,8 +151,44 @@ function detailTemplate(post, related) {
     </header>
     ${post.featured_image_url ? `<img class="post-featured-image" src="${escapeHtml(post.featured_image_url)}" alt="" loading="eager">` : ""}
     <div class="post-body">${sanitizeRichText(post.body_html || "")}</div>
+    ${gallery}
     ${attachments ? `<div class="attachment-list">${attachments}</div>` : ""}
     ${relatedHtml}
+  `;
+}
+
+async function initMap() {
+  const card = document.querySelector("[data-map-card]");
+  const { data, error } = await supabase
+    .from("checkins")
+    .select("*")
+    .eq("is_public", true)
+    .order("sort_order", { ascending: true });
+  if (error) {
+    mapEl.innerHTML = `<p class="admin-message">${escapeHtml(error.message)}</p>`;
+    return;
+  }
+  const checkins = data || [];
+  mapEl.innerHTML = checkins.length ? checkins.map(pinTemplate).join("") : `<p class="admin-message">No public check-ins yet.</p>`;
+  mapEl.querySelectorAll("[data-checkin-id]").forEach((button) => button.addEventListener("click", () => {
+    const checkin = checkins.find((item) => item.id === button.dataset.checkinId);
+    card.innerHTML = checkinCard(checkin);
+  }));
+}
+
+function pinTemplate(checkin) {
+  const x = ((Number(checkin.longitude) + 180) / 360) * 100;
+  const y = ((90 - Number(checkin.latitude)) / 180) * 100;
+  return `<button class="map-pin" type="button" style="left:${x}%;top:${y}%" data-checkin-id="${checkin.id}" aria-label="${escapeHtml(checkin.location_name)}"></button>`;
+}
+
+function checkinCard(checkin) {
+  return `
+    ${checkin.cover_image_url ? `<img src="${escapeHtml(checkin.cover_image_url)}" alt="" loading="lazy">` : ""}
+    <p class="eyebrow">${escapeHtml(new Date(checkin.visited_at).toLocaleDateString())}</p>
+    <h2>${escapeHtml(checkin.location_name)}</h2>
+    <p>${escapeHtml(checkin.journal_note || "")}</p>
+    ${checkin.related_post_slug ? `<a class="button" href="/blog/${encodeURIComponent(checkin.related_post_slug)}">Read the article</a>` : ""}
   `;
 }
 

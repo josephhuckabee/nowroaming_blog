@@ -9,11 +9,17 @@ Legacy Markdown posts can stay in `posts/`. All new posts should be created in t
 - `/admin/login/` - private CMS login
 - `/admin/` - admin dashboard
 - `/admin/posts/` - post list, search, filters, sorting
+- `/admin/drafts/` - draft-only post queue
 - `/admin/posts/new/` - create a post
 - `/admin/posts/:id/edit/` - edit a post on Vercel
 - `/admin/posts/edit/?id=:id` - local Eleventy dev fallback for editing
+- `/admin/categories/` - category CRUD
+- `/admin/tags/` - tag CRUD
 - `/admin/media/` - media library and uploads
+- `/admin/routes/` - route CRUD
+- `/admin/check-ins/` - map check-in CRUD
 - `/admin/settings/` - blog settings
+- `/map/` - public map with public check-ins
 - `/blog/` - public Supabase-backed post list
 - `/blog/:slug` - public Supabase-backed post reader on Vercel
 
@@ -75,6 +81,8 @@ The schema in `supabase/schema.sql` creates:
 - `post_categories`
 - `post_tags`
 - `media`
+- `routes`
+- `checkins`
 - `settings`
 - `published_posts` view
 
@@ -160,6 +168,25 @@ Use `Unpublish` to return a post to draft status. Use `Delete` to remove it.
 5. Publish the post that references the media.
 
 Media is reusable across posts.
+
+## Apply The CMS Completion Migration
+
+For an existing Supabase project that already has the earlier schema, run:
+
+```sql
+-- supabase/migrations/20260628_cms_completion.sql
+```
+
+This adds Markdown storage, gallery data, related post IDs, responsive media metadata, `routes`, and `checkins`, plus the RLS policies needed by the new CMS pages and public map.
+
+## Manage The Map
+
+1. Go to `/admin/check-ins/`.
+2. Add location name, latitude, longitude, date, cover image, note, related post slug, public/private state, and sort order.
+3. Set `Public` to `true` when the check-in should appear on `/map/`.
+4. Use sort order to control editorial ordering in the CMS and public map fetch.
+
+Public visitors can only read rows where `is_public = true`.
 
 ## Local Development
 

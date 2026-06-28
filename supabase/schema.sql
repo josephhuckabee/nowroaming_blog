@@ -17,6 +17,7 @@ create table public.posts (
   subtitle text,
   excerpt text,
   body_html text not null default '',
+  body_markdown text,
   author text not null default 'Joseph Huckabee',
   status public.post_status not null default 'draft',
   published_at timestamptz,
@@ -28,6 +29,8 @@ create table public.posts (
   meta_description text,
   reading_time_minutes integer not null default 1,
   attachments jsonb not null default '[]'::jsonb,
+  gallery jsonb not null default '[]'::jsonb,
+  related_post_ids uuid[] not null default '{}'::uuid[],
   created_by uuid references public.users(id) on delete set null,
   updated_by uuid references public.users(id) on delete set null,
   created_at timestamptz not null default now(),
@@ -79,8 +82,36 @@ create table public.media (
   is_public boolean not null default false,
   alt_text text,
   folder text,
+  responsive_variants jsonb not null default '[]'::jsonb,
   uploaded_by uuid references public.users(id) on delete set null,
   created_at timestamptz not null default now()
+);
+
+create table public.routes (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  slug text not null unique,
+  description text,
+  cover_image_url text,
+  status text not null default 'draft' check (status in ('draft', 'published')),
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.checkins (
+  id uuid primary key default gen_random_uuid(),
+  location_name text not null,
+  latitude numeric not null,
+  longitude numeric not null,
+  visited_at date not null,
+  cover_image_url text,
+  journal_note text,
+  related_post_slug text,
+  is_public boolean not null default false,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table public.settings (
@@ -116,6 +147,14 @@ for each row execute function public.touch_updated_at();
 
 create trigger settings_touch_updated_at
 before update on public.settings
+for each row execute function public.touch_updated_at();
+
+create trigger routes_touch_updated_at
+before update on public.routes
+for each row execute function public.touch_updated_at();
+
+create trigger checkins_touch_updated_at
+before update on public.checkins
 for each row execute function public.touch_updated_at();
 
 create or replace function public.handle_new_user()
@@ -162,6 +201,8 @@ alter table public.tags enable row level security;
 alter table public.post_categories enable row level security;
 alter table public.post_tags enable row level security;
 alter table public.media enable row level security;
+alter table public.routes enable row level security;
+alter table public.checkins enable row level security;
 alter table public.settings enable row level security;
 
 create policy "Admins can read own profile" on public.users
@@ -237,6 +278,24 @@ using (exists (select 1 from public.users u where u.id = auth.uid() and u.role =
 with check (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'));
 
 create policy "Public can read published media rows" on public.media
+for select to anon, authenticated
+using (is_public = true);
+
+create policy "Admins can manage routes" on public.routes
+for all to authenticated
+using (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'))
+with check (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'));
+
+create policy "Public can read published routes" on public.routes
+for select to anon, authenticated
+using (status = 'published');
+
+create policy "Admins can manage checkins" on public.checkins
+for all to authenticated
+using (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'))
+with check (exists (select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'));
+
+create policy "Public can read public checkins" on public.checkins
 for select to anon, authenticated
 using (is_public = true);
 

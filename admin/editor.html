@@ -19,7 +19,7 @@ robots: noindex, nofollow
       </div>
     </div>
 
-    <form class="admin-login" data-admin-login>
+    <form class="admin-login" data-admin-login hidden>
       <h2>Admin login</h2>
       <label>Email <input name="email" type="email" autocomplete="email" required></label>
       <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
@@ -33,6 +33,12 @@ robots: noindex, nofollow
         <label>Subtitle <input name="subtitle"></label>
         <label>Slug <input name="slug" data-slug-input required></label>
         <label>Excerpt <textarea name="excerpt" rows="3"></textarea></label>
+        <label>Editor mode
+          <select name="editor_mode">
+            <option value="rich">Rich text</option>
+            <option value="markdown">Markdown</option>
+          </select>
+        </label>
 
         <div class="editor-toolbar" aria-label="Rich text controls">
           <button type="button" data-command="formatBlock" data-value="h2">H2</button>
@@ -50,8 +56,10 @@ robots: noindex, nofollow
           <button type="button" data-insert="hr">Divider</button>
           <button type="button" data-insert="youtube">YouTube</button>
           <button type="button" data-insert="image">Image</button>
+          <button type="button" data-insert="gallery">Gallery</button>
         </div>
         <div class="rich-editor post-body" data-rich-editor contenteditable="true" role="textbox" aria-multiline="true"></div>
+        <textarea class="markdown-editor" name="body_markdown" data-markdown-editor rows="18" hidden></textarea>
       </div>
 
       <aside class="editor-sidebar">
@@ -67,8 +75,12 @@ robots: noindex, nofollow
         <label>Featured image URL <input name="featured_image_url" type="url"></label>
         <label>Open Graph image URL <input name="og_image_url" type="url"></label>
         <label>Canonical URL <input name="canonical_url" type="url"></label>
+        <label>Gallery JSON <textarea name="gallery" rows="4" placeholder='[{"url":"https://...","caption":"..."}]'></textarea></label>
+        <label>PDF attachments JSON <textarea name="attachments" rows="4" placeholder='[{"url":"https://...","name":"Guide.pdf"}]'></textarea></label>
         <label>Categories <input name="categories" placeholder="Travel, Seoul"></label>
         <label>Tags <input name="tags" placeholder="food, arrival, budget"></label>
+        <label>Related posts <input name="related_post_ids" placeholder="post-id, post-id"></label>
+        <label>Add related post <select data-related-picker aria-label="Add related post"></select></label>
         <label>SEO title <input name="seo_title"></label>
         <label>Meta description <textarea name="meta_description" rows="4"></textarea></label>
         <div class="admin-actions stacked">

@@ -15,11 +15,13 @@ robots: noindex, nofollow
       </div>
       <div class="admin-actions">
         <a class="button secondary" href="/admin/posts/">Posts</a>
+        <a class="button secondary" href="/admin/check-ins/">Check-ins</a>
+        <a class="button secondary" href="/admin/settings/">Settings</a>
         <button class="button secondary" type="button" data-admin-logout>Logout</button>
       </div>
     </div>
 
-    <form class="admin-login" data-admin-login>
+    <form class="admin-login" data-admin-login hidden>
       <h2>Admin login</h2>
       <label>Email <input name="email" type="email" autocomplete="email" required></label>
       <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
@@ -33,7 +35,15 @@ robots: noindex, nofollow
         <p>Drop images or PDFs here, or choose files.</p>
         <progress data-upload-progress value="0" max="100" hidden></progress>
       </div>
-      <input data-media-search type="search" placeholder="Search media" aria-label="Search media">
+      <div class="admin-toolbar">
+        <input data-media-search type="search" placeholder="Search media" aria-label="Search media">
+        <input data-media-folder type="text" placeholder="Folder name" aria-label="Upload folder">
+        <select data-media-filter aria-label="Filter media type">
+          <option value="">All media</option>
+          <option value="image">Images</option>
+          <option value="pdf">PDFs</option>
+        </select>
+      </div>
       <div class="media-grid" data-media-grid></div>
     </div>
   </section>
